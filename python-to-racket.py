@@ -1,6 +1,7 @@
 import ast
 import sys
 import json
+from define_visitor import DefineVisitor
 
 class JSONVisitorException(Exception):
   pass
@@ -56,7 +57,7 @@ class RacketVisitor(ast.NodeVisitor):
     elif isinstance(op, ast.GtE):
       return ">="
     else:
-      raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % op)
+      raise JSONVisitorException("Unexpected error: Missed case: %s." % op)
 
   """
   A visitor for num expression
@@ -227,26 +228,43 @@ class RacketVisitor(ast.NodeVisitor):
   """
   def visit_Assign(self, node):
     self.assignNo = self.assignNo + 1
+    lhs = None
+    rhs = None
     for field, value in ast.iter_fields(node):
       if field == "targets":
+        lhs = value[0]
         self.indent_print(field + ":")
-        self.racket = self.racket + "(let (["
+        # self.racket = self.racket + "(set! "
         self.indent = self.indent + 1
         self.indent_print(value[0].__class__.__name__ + ":")
-        self.visit(value[0])
+        # self.visit(value[0])
         self.indent = self.indent - 1
       elif field == "value":
+        rhs = value
         self.indent_print(field + ":")
         self.indent = self.indent + 1
         self.indent_print(value.__class__.__name__ + ":")
         self.indent = self.indent + 1
-        self.visit(value)
+        # self.visit(value)
         self.indent = self.indent - 1
         self.indent = self.indent - 1
       else:
         self.print_field_value(field, value)
-        raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % value)
-    self.racket = self.racket + " ])\n"
+        raise JSONVisitorException("Unexpected error: Missed case: %s." % value)
+
+    #print lhs, isinstance(lhs, ast.Name)
+    if isinstance(lhs, ast.Name):
+      print lhs, rhs
+      self.racket = self.racket + "(set!"
+      self.visit(lhs)
+      self.visit(rhs)
+      self.racket = self.racket + ")\n"
+    elif isinstance(lhs, ast.Tuple):
+      for l,r in zip(lhs.elts, rhs.elts):
+        self.racket = self.racket + "(set!"
+        self.visit(l)
+        self.visit(r)
+        self.racket = self.racket + ")\n"
 
   """
   A visitor for return expression
@@ -327,6 +345,9 @@ class RacketVisitor(ast.NodeVisitor):
         self.visit(value)
         self.indent = self.indent - 1
         self.racket = self.racket + ")\n"
+        for var in node.define:
+          if node.define[var] == "var":
+            self.racket = self.racket + ("(define " + var + " #f)\n")
       elif field == "body":
         body = value
         self.indent_print(field + ":")
@@ -349,6 +370,14 @@ class RacketVisitor(ast.NodeVisitor):
     if decorator_list:
       raise JSONVisitorException("Unexpected error: Missed case: decorator_list is not empty.  Please report to the TAs.")
 
+  """
+  A visitor for module.
+  """
+  def visit_Module(self, node):
+    for var in node.define:
+      if node.define[var] == "var":
+        self.racket = self.racket + ("(define " + var + " #f)\n")
+    return self.generic_visit(node)
 
   """
   """
@@ -374,6 +403,8 @@ class RacketVisitor(ast.NodeVisitor):
     return self.racket
 
 if __name__ == '__main__':
-  print(RacketVisitor().visit(ast.parse(sys.stdin.read())))
+  my_ast = ast.parse(sys.stdin.read())
+  DefineVisitor().visit(my_ast)
+  print(RacketVisitor().visit(my_ast))
   #print(ast.dump(ast.parse(sys.stdin.read())))
 

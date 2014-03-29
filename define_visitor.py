@@ -14,6 +14,8 @@ def lookup(table,val):
   else:
     return False
 
+primitives = {"add": "+", "sub": "-"}
+
 class DefineVisitor(ast.NodeVisitor):
   env = {"__up__": None}
 
@@ -24,7 +26,29 @@ class DefineVisitor(ast.NodeVisitor):
     for field, value in ast.iter_fields(node):
       if field == "targets":
         print "targets = ", value[0]
-        self.visit(value[0])
+        lhs = value[0]
+        if isinstance(lhs,ast.Name):
+          self.visit_Lhs(value[0])
+        elif isinstance(lhs,ast.Tuple):
+          for l in lhs.elts:
+            self.visit_Lhs(l)
+        else:
+          JSONVisitorException("Unexpected error: in visit_Assign Missed case: %s." \
+                                 % lhs.__class__.__name)
+      elif field == "value":
+        self.visit(value)
+
+  """
+  A visitor for lhs expression
+  """
+  def visit_Lhs(self, node):
+    name = None
+    for field, value in ast.iter_fields(node):
+      if field == "id":
+        if not lookup(self.env,value):
+          print "Define var: ", value      
+          self.env[value] = "var"
+
 
   """
   A visitor for name expression
@@ -34,8 +58,10 @@ class DefineVisitor(ast.NodeVisitor):
     for field, value in ast.iter_fields(node):
       if field == "id":
         if not lookup(self.env,value):
-          print "Define var: ", value
-          self.env[value] = "var"
+          # primitive
+          print "Primitive value = ", value
+          if value in primitives:
+            node.racket = primitives[value]
 
   """
   A visitor for if expression

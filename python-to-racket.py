@@ -1,6 +1,4 @@
-import ast
-import sys
-import json
+import ast, sys, json
 from define_visitor import DefineVisitor
 
 class JSONVisitorException(Exception):
@@ -254,7 +252,6 @@ class RacketVisitor(ast.NodeVisitor):
 
     #print lhs, isinstance(lhs, ast.Name)
     if isinstance(lhs, ast.Name):
-      print lhs, rhs
       self.racket = self.racket + "(set!"
       self.visit(lhs)
       self.visit(rhs)
@@ -287,7 +284,10 @@ class RacketVisitor(ast.NodeVisitor):
     name = None
     for field, value in ast.iter_fields(node):
       if field == "id":
-        name = value
+        if "racket" in node.__dict__:
+          name = node.racket
+        else:
+          name = value
         self.indent = self.indent + 1
         self.indent_print(field + ":" + name)
         self.indent = self.indent - 1
@@ -362,13 +362,13 @@ class RacketVisitor(ast.NodeVisitor):
         decorator_list = value
         self.print_field_value(field, value)
      
-    for i in xrange(0, self.assignNo):
-      self.racket = self.racket + ")"
+    # for i in xrange(0, self.assignNo):
+    #   self.racket = self.racket + ")"
 
     self.racket = self.racket + ")\n"
 
     if decorator_list:
-      raise JSONVisitorException("Unexpected error: Missed case: decorator_list is not empty.  Please report to the TAs.")
+      raise JSONVisitorException("Unexpected error: Missed case: decorator_list is not empty.")
 
   """
   A visitor for module.
@@ -386,6 +386,7 @@ class RacketVisitor(ast.NodeVisitor):
       raise JSONVisitorException("Unexpected error: Non-ast passed to visit.  Please report to the TAs.")
 
     for field, value in ast.iter_fields(node):
+      print "field: ", field, " value: ", value
       self.indent_print(field + ":")
       self.indent = self.indent + 1
       if (isinstance(value, list)):
@@ -405,6 +406,13 @@ class RacketVisitor(ast.NodeVisitor):
 if __name__ == '__main__':
   my_ast = ast.parse(sys.stdin.read())
   DefineVisitor().visit(my_ast)
-  print(RacketVisitor().visit(my_ast))
+  racket = RacketVisitor().visit(my_ast)
+
+  print(racket)
+
+  f = open("output.rkt", "w")
+  f.write("#lang racket\n")
+  f.write(racket)
+  f.close()
   #print(ast.dump(ast.parse(sys.stdin.read())))
 

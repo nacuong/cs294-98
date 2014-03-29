@@ -411,6 +411,7 @@ def translate_to_racket(my_ast,rkt):
   print(racket)
   f = open(rkt, "w")
   f.write("#lang s-exp rosette\n")
+  f.write("(require \"util.rkt\")\n")
   f.write("(provide (all-defined-out))\n")
   f.write(racket)
   f.close()
@@ -435,7 +436,7 @@ def autograde():
 
   f = open("grade.rkt", "w")
   f.write("#lang s-exp rosette\n")
-  f.write("(require \"util.rkt\" \"" + t_rkt + "\" \"" + s_rkt + "\")\n")
+  f.write("(require \"" + t_rkt + "\" \"" + s_rkt + "\")\n")
   f.write("(configure [bitwidth 16] [loop-bound 10])\n")
 
   args = "".join([" i" + str(i) for i in xrange(t_args)])

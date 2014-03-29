@@ -1,4 +1,4 @@
-def a_plus_abs_b(a, b):
+def ab_t(a, b):
   if b < 0:
     op = sub
   else:

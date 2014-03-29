@@ -1,5 +1,6 @@
-import ast, sys, json
+import ast, sys, json, getopt
 from define_visitor import DefineVisitor
+from optparse import OptionParser
 
 class JSONVisitorException(Exception):
   pass
@@ -403,16 +404,76 @@ class RacketVisitor(ast.NodeVisitor):
 
     return self.racket
 
-if __name__ == '__main__':
-  my_ast = ast.parse(sys.stdin.read())
+def translate_to_racket(my_ast,rkt):
   DefineVisitor().visit(my_ast)
   racket = RacketVisitor().visit(my_ast)
 
   print(racket)
-
-  f = open("output.rkt", "w")
-  f.write("#lang racket\n")
+  f = open(rkt, "w")
+  f.write("#lang s-exp rosette\n")
+  f.write("(provide (all-defined-out))\n")
   f.write(racket)
   f.close()
+
+t_py = None
+t_rkt = None
+t_func = None
+t_ast = None
+
+s_py = None
+s_rkt = None
+s_func = None
+s_ast = None
+
+def autograde():
+  t_args = MainArgsVisitor().visit(t_ast)
+  s_args = MainArgsVisitor().visit(s_ast)
+
+  if not t_args == s_args:
+    print "Numbers of arguments to the main functions are different."
+    exit()
+
+  f = open("grade.rkt", "w")
+  f.write("#lang s-exp rosette\n")
+  f.write("(require \"util.rkt\" \"" + t_rkt + "\" \"" + s_rkt + "\")\n")
+  f.write("(configure [bitwidth 16] [loop-bound 10])\n")
+
+  args = "".join([" i" + str(i) for i in xrange(t_args)])
+  f.write("(define-symbolic" + args + " number?)")
+  f.write("(verify (assert (eq? (" + t_func + args + ") (" + s_func + args + "))))")
+
+# (define-symbolic i0 i1 number?)
+# (define bound 100)
+# (configure [bitwidth 16] [loop-bound 10])
+# (verify #:assume (assert (< i0 10))
+#         #:guarantee (assert (eq? (f-iter i0) (g-iter i0))))
+
+if __name__ == '__main__':
+
+  parser = OptionParser()
+  parser.add_option("-a", "--teacher-py")
+  parser.add_option("-b", "--teacher-func")
+  parser.add_option("-x", "--student-py")
+  parser.add_option("-y", "--student-func")
+  (options, args) = parser.parse_args()
+
+  if options.teacher_py:
+    t_py = options.teacher_py
+    t_rkt = t_py.strip(".py") + ".rkt"
+    t_ast = ast.parse(open(t_py,"r").read())
+    translate_to_racket(t_ast, t_rkt)
+
+  if options.student_py:
+    s_py = options.student_py
+    s_rkt = s_py.strip(".py") + ".rkt"
+    s_ast = ast.parse(open(s_py,"r").read())
+    translate_to_racket(s_ast, s_rkt)
+
+  if t_py and s_py and options.teacher_func and options.student_func:
+    t_func = options.teacher_func
+    s_func = options.student_func
+    #autograde()
+    
+
   #print(ast.dump(ast.parse(sys.stdin.read())))
 

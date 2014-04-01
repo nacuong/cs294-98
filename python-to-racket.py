@@ -66,6 +66,10 @@ class RacketVisitor(ast.NodeVisitor):
   A visitor for num expression
   """
   def visit_Num(self, node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     for field, value in ast.iter_fields(node):
       if field == "n":
         self.indent = self.indent + 1
@@ -83,6 +87,11 @@ class RacketVisitor(ast.NodeVisitor):
     left = None
     ops = None
     comparators = None
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     for field, value in ast.iter_fields(node):
       if field == "left":
         left = value
@@ -131,6 +140,11 @@ class RacketVisitor(ast.NodeVisitor):
   A visitor for if expression
   """
   def visit_If(self, node):
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
     self.racket = self.racket + "(if"
     self.rkt_col_offset += len("(if")
@@ -172,6 +186,11 @@ class RacketVisitor(ast.NodeVisitor):
   A visitor for call expression
   """
   def visit_Call(self, node):
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
     self.racket = self.racket + "("
     self.rkt_col_offset += len("(")
@@ -202,6 +221,11 @@ class RacketVisitor(ast.NodeVisitor):
     left = None
     op = None
     right = None
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     for field, value in ast.iter_fields(node):
       if field == "left":
         left = value
@@ -251,6 +275,11 @@ class RacketVisitor(ast.NodeVisitor):
   def visit_Assign(self, node):
     lhs = None
     rhs = None
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     for field, value in ast.iter_fields(node):
       if field == "targets":
         lhs = value[0]
@@ -302,6 +331,10 @@ class RacketVisitor(ast.NodeVisitor):
   A visitor for return expression
   """
   def visit_Return(self, node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     for field, value in ast.iter_fields(node):
       if field == "value":
         self.indent_print(field + ":")
@@ -317,6 +350,11 @@ class RacketVisitor(ast.NodeVisitor):
   """
   def visit_Name(self, node):
     name = None
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     for field, value in ast.iter_fields(node):
       if field == "id":
         if "racket" in node.__dict__:
@@ -339,6 +377,11 @@ class RacketVisitor(ast.NodeVisitor):
     vararg = None
     kwarg = None
     defaults = None
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     for field, value in ast.iter_fields(node):
       if field == "args":
         args = value
@@ -369,6 +412,10 @@ class RacketVisitor(ast.NodeVisitor):
     args = None
     body = None
     decorator_list = None
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
 
     for field, value in ast.iter_fields(node):
       if field == "name":
@@ -417,6 +464,10 @@ class RacketVisitor(ast.NodeVisitor):
   A visitor for module.
   """
   def visit_Module(self, node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     # construct variable definition in racket
     for var in node.define:
       if node.define[var] == "var":
@@ -434,6 +485,10 @@ class RacketVisitor(ast.NodeVisitor):
   def generic_visit(self, node):
     if (not (isinstance(node, ast.AST))):
       raise JSONVisitorException("Unexpected error: Non-ast passed to visit.  Please report to the TAs.")
+
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
 
     for field, value in ast.iter_fields(node):
       print "field: ", field, " value: ", value

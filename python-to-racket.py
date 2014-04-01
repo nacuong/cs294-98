@@ -10,7 +10,7 @@ class RacketVisitor(ast.NodeVisitor):
   test = True
   racket = ""
   rkt_lineno = 0
-  rkt_col_offset = 0
+  rkt_col_offset = 1
   pytorkt_loc = {}
 
   """
@@ -166,7 +166,7 @@ class RacketVisitor(ast.NodeVisitor):
 
     self.racket = self.racket + ")\n"
     self.rkt_lineno += 1
-    self.rkt_col_offset = 0
+    self.rkt_col_offset = 1
 
   """
   A visitor for call expression
@@ -193,7 +193,7 @@ class RacketVisitor(ast.NodeVisitor):
         self.print_field_value(field, value)
     self.racket = self.racket + " )\n"
     self.rkt_lineno += 1
-    self.rkt_col_offset = 0
+    self.rkt_col_offset = 1
 
   """
   A visitor for binop expression
@@ -283,7 +283,7 @@ class RacketVisitor(ast.NodeVisitor):
       self.racket = self.racket + ")\n"
 
       self.rkt_lineno += 1 
-      self.rkt_col_offset = 0
+      self.rkt_col_offset = 1
     elif isinstance(lhs, ast.Tuple):
       for l,r in zip(lhs.elts, rhs.elts):
         self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
@@ -294,7 +294,7 @@ class RacketVisitor(ast.NodeVisitor):
         self.racket = self.racket + ")\n"
 
         self.rkt_lineno += 1 
-        self.rkt_col_offset = 0
+        self.rkt_col_offset = 1
 
        
 
@@ -386,12 +386,12 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent - 1
         self.racket = self.racket + ")\n"
         self.rkt_lineno += 1
-        self.rkt_col_offset = 0
+        self.rkt_col_offset = 1
         for var in node.define:
           if node.define[var] == "var":
             self.racket = self.racket + ("(define " + var + " #f)\n")
             self.rkt_lineno += 1
-            self.rkt_col_offset = 0
+            self.rkt_col_offset = 1
       elif field == "body":
         body = value
         self.indent_print(field + ":")
@@ -408,7 +408,7 @@ class RacketVisitor(ast.NodeVisitor):
      
     self.racket = self.racket + ")\n"
     self.rkt_lineno += 1
-    self.rkt_col_offset = 0
+    self.rkt_col_offset = 1
 
     if decorator_list:
       raise JSONVisitorException("Unexpected error: Missed case: decorator_list is not empty.")
@@ -422,7 +422,7 @@ class RacketVisitor(ast.NodeVisitor):
       if node.define[var] == "var":
         self.racket = self.racket + ("(define " + var + " #f)\n")
         self.rkt_lineno += 1
-        self.rkt_col_offset = 0
+        self.rkt_col_offset = 1
 
     return self.generic_visit(node)
 

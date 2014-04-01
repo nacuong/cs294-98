@@ -7,11 +7,14 @@ class JSONVisitorException(Exception):
 
 class RacketVisitor(ast.NodeVisitor):
   indent = 0
-  assignNo = 0
   test = True
   racket = ""
+  rkt_lineno = 0
+  rkt_col_offset = 0
+  pytorkt_loc = {}
 
   """
+  Print ast with indentation
   """
   def indent_print(self, s):
     if self.test:
@@ -20,6 +23,7 @@ class RacketVisitor(ast.NodeVisitor):
       print s
 
   """
+  Print all field/value pairs with indentation
   """
   def print_field_value(self, field, value):
     self.indent_print(field + ":")
@@ -67,7 +71,10 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent + 1
         self.indent_print(field + ":" + str(value))
         self.indent = self.indent - 1
+
+        self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
         self.racket = self.racket + " " + str(value)
+        self.rkt_col_offset += len(" " + str(value))
 
   """
   A visitor for compare expression
@@ -93,7 +100,10 @@ class RacketVisitor(ast.NodeVisitor):
     self.indent = self.indent + 1
     self.indent = self.indent - 1
     self.indent = self.indent - 1
+
+    self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
     self.racket = self.racket + " (" + self.op_to_string(ops)
+    self.rkt_col_offset += len(" (" + self.op_to_string(ops))
 
     # process left
     self.indent_print("left:")
@@ -114,13 +124,16 @@ class RacketVisitor(ast.NodeVisitor):
     self.indent = self.indent - 1
 
     self.racket = self.racket + ")"
+    self.rkt_col_offset += len(")")
 
 
   """
   A visitor for if expression
   """
   def visit_If(self, node):
+    self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
     self.racket = self.racket + "(if"
+    self.rkt_col_offset += len("(if")
     for field, value in ast.iter_fields(node):
       if field == "test":
         self.indent_print(field + ":")
@@ -152,12 +165,16 @@ class RacketVisitor(ast.NodeVisitor):
         self.print_field_value(field, value)
 
     self.racket = self.racket + ")\n"
+    self.rkt_lineno += 1
+    self.rkt_col_offset = 0
 
   """
   A visitor for call expression
   """
   def visit_Call(self, node):
+    self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
     self.racket = self.racket + "("
+    self.rkt_col_offset += len("(")
     for field, value in ast.iter_fields(node):
       if field == "func":
         self.indent_print(field + ":")
@@ -175,6 +192,8 @@ class RacketVisitor(ast.NodeVisitor):
       else:
         self.print_field_value(field, value)
     self.racket = self.racket + " )\n"
+    self.rkt_lineno += 1
+    self.rkt_col_offset = 0
 
   """
   A visitor for binop expression
@@ -200,7 +219,10 @@ class RacketVisitor(ast.NodeVisitor):
     self.indent = self.indent + 1
     self.indent = self.indent - 1
     self.indent = self.indent - 1
+
+    self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
     self.racket = self.racket + " (" + self.op_to_string(op)
+    self.rkt_col_offset += len(" (" + self.op_to_string(op))
 
     # process left
     self.indent_print("left:")
@@ -221,12 +243,12 @@ class RacketVisitor(ast.NodeVisitor):
     self.indent = self.indent - 1
 
     self.racket = self.racket + ")"
+    self.rkt_col_offset += len(")")
 
   """
   A visitor for assign expression
   """
   def visit_Assign(self, node):
-    self.assignNo = self.assignNo + 1
     lhs = None
     rhs = None
     for field, value in ast.iter_fields(node):
@@ -253,16 +275,28 @@ class RacketVisitor(ast.NodeVisitor):
 
     #print lhs, isinstance(lhs, ast.Name)
     if isinstance(lhs, ast.Name):
+      self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
       self.racket = self.racket + "(set!"
+      self.rkt_col_offset += len("(set!")
       self.visit(lhs)
       self.visit(rhs)
       self.racket = self.racket + ")\n"
+
+      self.rkt_lineno += 1 
+      self.rkt_col_offset = 0
     elif isinstance(lhs, ast.Tuple):
       for l,r in zip(lhs.elts, rhs.elts):
+        self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
         self.racket = self.racket + "(set!"
+        self.rkt_col_offset += len("(set!")
         self.visit(l)
         self.visit(r)
         self.racket = self.racket + ")\n"
+
+        self.rkt_lineno += 1 
+        self.rkt_col_offset = 0
+
+       
 
   """
   A visitor for return expression
@@ -292,7 +326,10 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent + 1
         self.indent_print(field + ":" + name)
         self.indent = self.indent - 1
+
+        self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
         self.racket = self.racket + " " + name
+        self.rkt_col_offset += len(" " + name)
 
   """
   A visitor for function arguments.
@@ -338,7 +375,9 @@ class RacketVisitor(ast.NodeVisitor):
         name = value
         self.print_field_value(field, value)
         # declare a function with name
+        self.rkt_lineno += 1
         self.racket = self.racket + "\n(define (" + name
+        self.rkt_col_offset += len("(define (" + name) 
       elif field == "args":
         args = value
         self.indent_print(field + ":")
@@ -346,9 +385,13 @@ class RacketVisitor(ast.NodeVisitor):
         self.visit(value)
         self.indent = self.indent - 1
         self.racket = self.racket + ")\n"
+        self.rkt_lineno += 1
+        self.rkt_col_offset = 0
         for var in node.define:
           if node.define[var] == "var":
             self.racket = self.racket + ("(define " + var + " #f)\n")
+            self.rkt_lineno += 1
+            self.rkt_col_offset = 0
       elif field == "body":
         body = value
         self.indent_print(field + ":")
@@ -363,10 +406,9 @@ class RacketVisitor(ast.NodeVisitor):
         decorator_list = value
         self.print_field_value(field, value)
      
-    # for i in xrange(0, self.assignNo):
-    #   self.racket = self.racket + ")"
-
     self.racket = self.racket + ")\n"
+    self.rkt_lineno += 1
+    self.rkt_col_offset = 0
 
     if decorator_list:
       raise JSONVisitorException("Unexpected error: Missed case: decorator_list is not empty.")
@@ -375,12 +417,19 @@ class RacketVisitor(ast.NodeVisitor):
   A visitor for module.
   """
   def visit_Module(self, node):
+    # construct variable definition in racket
     for var in node.define:
       if node.define[var] == "var":
         self.racket = self.racket + ("(define " + var + " #f)\n")
+        self.rkt_lineno += 1
+        self.rkt_col_offset = 0
+
     return self.generic_visit(node)
 
   """
+  Generic visitor for Python program. Syntax-directed translation to racket.
+  Return the racket program and the mapping from (line, col) of python to
+  (line, col) of racket program.
   """
   def generic_visit(self, node):
     if (not (isinstance(node, ast.AST))):
@@ -402,11 +451,13 @@ class RacketVisitor(ast.NodeVisitor):
         raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % value)
       self.indent = self.indent - 1
 
-    return self.racket
+    return (self.racket, self.pytorkt_loc)
 
 def translate_to_racket(my_ast,rkt):
   DefineVisitor().visit(my_ast)
-  racket = RacketVisitor().visit(my_ast)
+  (racket, pytorkt_loc) = RacketVisitor().visit(my_ast)
+
+  print(pytorkt_loc)
 
   print(racket)
   f = open(rkt, "w")

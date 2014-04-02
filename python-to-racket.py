@@ -1,5 +1,6 @@
 import ast, sys, json, getopt
 from define_visitor import DefineVisitor
+from param_visitor import ParamVisitor
 from optparse import OptionParser
 
 class JSONVisitorException(Exception):
@@ -427,21 +428,29 @@ s_func = None
 s_ast = None
 
 def autograde():
-  t_args = MainArgsVisitor().visit(t_ast)
-  s_args = MainArgsVisitor().visit(s_ast)
+  t_args = ParamVisitor(t_func).visit(t_ast)
+  s_args = ParamVisitor(s_func).visit(s_ast)
 
-  if not t_args == s_args:
+  if not len(t_args) == len(s_args):
     print "Numbers of arguments to the main functions are different."
     exit()
 
+  n = len(t_args)
+
   f = open("grade.rkt", "w")
   f.write("#lang s-exp rosette\n")
-  f.write("(require \"" + t_rkt + "\" \"" + s_rkt + "\")\n")
-  f.write("(configure [bitwidth 16] [loop-bound 10])\n")
+  f.write("(require \"" + t_rkt + "\" \"" + s_rkt + "\")\n\n")
+  f.write("(configure [bitwidth 32] [loop-bound 10])\n")
 
-  args = "".join([" i" + str(i) for i in xrange(t_args)])
-  f.write("(define-symbolic" + args + " number?)")
-  f.write("(verify (assert (eq? (" + t_func + args + ") (" + s_func + args + "))))")
+  args = "".join([" i" + str(i) for i in xrange(n)])
+  f.write("(define-symbolic" + args + " number?)\n")
+  f.write("(verify\n")
+  f.write(" #:assume (assert (and " \
+            + " ".join(["(< i" + str(i) + " 10000) (>= i" + str(i) + " -10000)" for i in xrange(n)]) \
+            + "))\n")
+  f.write(" #:guarantee (assert (eq? (" + t_func + args + ") (" + s_func + args + "))))\n")
+                         
+                                              
 
 # (define-symbolic i0 i1 number?)
 # (define bound 100)
@@ -473,7 +482,7 @@ if __name__ == '__main__':
   if t_py and s_py and options.teacher_func and options.student_func:
     t_func = options.teacher_func
     s_func = options.student_func
-    #autograde()
+    autograde()
     
 
   #print(ast.dump(ast.parse(sys.stdin.read())))

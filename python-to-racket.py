@@ -3,6 +3,16 @@ from define_visitor import DefineVisitor
 from param_visitor import ParamVisitor
 from optparse import OptionParser
 
+t_py = None
+t_rkt = None
+t_func = None
+t_ast = None
+
+s_py = None
+s_rkt = None
+s_func = None
+s_ast = None
+
 class JSONVisitorException(Exception):
   pass
 
@@ -531,15 +541,6 @@ def translate_to_racket(my_ast, rkt, debug):
   f.write(racket)
   f.close()
 
-t_py = None
-t_rkt = None
-t_func = None
-t_ast = None
-
-s_py = None
-s_rkt = None
-s_func = None
-s_ast = None
 
 def autograde():
   t_args = ParamVisitor(t_func).visit(t_ast)
@@ -554,7 +555,7 @@ def autograde():
   f = open("grade.rkt", "w")
   f.write("#lang s-exp rosette\n")
   f.write("(require \"" + t_rkt + "\" \"" + s_rkt + "\")\n")
-  f.write("(require rosette/lang/debug)\n\n")
+  f.write("(require json rosette/lang/debug)\n\n")
   f.write("(configure [bitwidth 32] [loop-bound 10])\n")
 
   args = "".join([" i" + str(i) for i in xrange(n)])
@@ -568,18 +569,17 @@ def autograde():
   f.write("   #:guarantee (assert (eq? (" + t_func + args + ") (" + s_func + args + ")))))\n\n")
 
   concrete_args = "".join([" (evaluate i" + str(i) + " ce-model)" for i in xrange(n)])
-  f.write("(define core\n")
+  f.write("(define sol\n")
   f.write("  (debug [(lambda (x) (or (boolean? x) (number? x)))]\n")
   f.write("    (assert (eq? (" + t_func + concrete_args + ") (" \
             + s_func + concrete_args + ")))))\n")
+  f.write("(define sol-list (remove-duplicates (filter-map sym-origin (core sol))))\n")
+  f.write("(define return (map (lambda (item) (list " + \
+            "(syntax-line item) (syntax-column item) (syntax-span item) " + \
+            "(symbol->string (second (identifier-binding item))))) " + \
+            "(filter syntax-line sol-list)))\n")
+  f.write("(write-json return)")
                          
-                                              
-
-# (define-symbolic i0 i1 number?)
-# (define bound 100)
-# (configure [bitwidth 16] [loop-bound 10])
-# (verify #:assume (assert (< i0 10))
-#         #:guarantee (assert (eq? (f-iter i0) (g-iter i0))))
 
 if __name__ == '__main__':
 

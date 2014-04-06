@@ -13,6 +13,9 @@ s_rkt = None
 s_func = None
 s_ast = None
 
+lb = None
+ub = None
+
 class JSONVisitorException(Exception):
   pass
 
@@ -228,7 +231,7 @@ class RacketVisitor(ast.NodeVisitor):
     node.rkt_col_offset = self.rkt_col_offset
 
     self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
-    self.output("(")
+    self.output(" (")
     for field, value in ast.iter_fields(node):
       if field == "func":
         self.indent_print(field + ":")
@@ -245,7 +248,7 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent - 1
       else:
         self.print_field_value(field, value)
-    self.outputln(")")
+    self.output(")")
 
   """
   A visitor for binop expression
@@ -328,7 +331,6 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent + 1
         self.indent_print(value.__class__.__name__ + ":")
         self.indent = self.indent + 1
-        # self.visit(value)
         self.indent = self.indent - 1
         self.indent = self.indent - 1
       else:
@@ -347,7 +349,9 @@ class RacketVisitor(ast.NodeVisitor):
         self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
         self.output("(set!")
         self.visit(l)
+        self.id_open(r)
         self.visit(r)
+        self.id_close(r)
         self.outputln(")")
 
   """
@@ -364,7 +368,9 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent + 1
         self.indent_print(value.__class__.__name__ + ":")
         self.indent = self.indent + 1
+        self.id_open(value)
         self.visit(value)
+        self.id_close(value)
         self.indent = self.indent - 1
         self.indent = self.indent - 1
 
@@ -390,6 +396,23 @@ class RacketVisitor(ast.NodeVisitor):
 
         self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
         self._output(name)
+
+  """
+  A visitor for while statement
+  """
+  def visit_While(self, node):
+    self.output("(while ")
+
+    for field, value in ast.iter_fields(node):
+      print "while field: ", field, " value: ", value
+      if field == "test":
+        self.visit(value)
+        self.newline()
+      if field == "body":
+        for stmt in value:
+          self.visit(stmt)
+
+    self.outputln(")")
 
   """
   A visitor for function arguments.
@@ -525,7 +548,7 @@ class RacketVisitor(ast.NodeVisitor):
 
     return (self.racket, self.pytorkt_loc)
 
-def translate_to_racket(my_ast, rkt, debug):
+def translate_to_racket(my_ast, rkt, func, debug):
   DefineVisitor().visit(my_ast)
   (racket, pytorkt_loc) = RacketVisitor(debug).visit(my_ast)
 
@@ -537,7 +560,7 @@ def translate_to_racket(my_ast, rkt, debug):
   f.write("(require \"util.rkt\")\n")
   if debug:
     f.write("(require rosette/lang/debug)\n")
-  f.write("(provide (all-defined-out))\n")
+  f.write("(provide " + func + ")\n")
   f.write(racket)
   f.close()
 
@@ -555,7 +578,7 @@ def autograde():
   f = open("grade.rkt", "w")
   f.write("#lang s-exp rosette\n")
   f.write("(require \"" + t_rkt + "\" \"" + s_rkt + "\")\n")
-  f.write("(require json rosette/lang/debug)\n\n")
+  f.write("(require json rosette/lang/debug rosette/lib/tools/render)\n\n")
   f.write("(configure [bitwidth 32] [loop-bound 10])\n")
 
   args = "".join([" i" + str(i) for i in xrange(n)])
@@ -563,7 +586,8 @@ def autograde():
   f.write("(define ce-model\n")
   f.write("  (verify\n")
   f.write("   #:assume (assert (and " \
-            + " ".join(["(< i" + str(i) + " 10000) (>= i" + str(i) + " -10000)" \
+            + " ".join(["(< i" + str(i) + " " + str(ub) + ") " + \
+                          "(>= i" + str(i) + " " + str(lb) + ")" \
                           for i in xrange(n)]) \
             + "))\n")
   f.write("   #:guarantee (assert (eq? (" + t_func + args + ") (" + s_func + args + ")))))\n\n")
@@ -588,23 +612,27 @@ if __name__ == '__main__':
   parser.add_option("-b", "--teacher-func")
   parser.add_option("-x", "--student-py")
   parser.add_option("-y", "--student-func")
+  parser.add_option("-l", "--lower-bound", default=-10000)
+  parser.add_option("-u", "--upper-bound", default=10000)
   (options, args) = parser.parse_args()
 
-  if options.teacher_py:
+  if options.teacher_py and options.teacher_func:
     t_py = options.teacher_py
+    t_func = options.teacher_func
     t_rkt = t_py.strip(".py") + ".rkt"
     t_ast = ast.parse(open(t_py,"r").read())
-    translate_to_racket(t_ast, t_rkt, False)
+    translate_to_racket(t_ast, t_rkt, t_func, False)
 
-  if options.student_py:
+  if options.student_py and options.student_func:
     s_py = options.student_py
+    s_func = options.student_func
     s_rkt = s_py.strip(".py") + ".rkt"
     s_ast = ast.parse(open(s_py,"r").read())
-    translate_to_racket(s_ast, s_rkt, True)
+    translate_to_racket(s_ast, s_rkt, s_func, True)
 
   if t_py and s_py and options.teacher_func and options.student_func:
-    t_func = options.teacher_func
-    s_func = options.student_func
+    lb = options.lower_bound
+    ub = options.upper_bound
     autograde()
     
 

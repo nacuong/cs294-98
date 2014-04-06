@@ -1,4 +1,4 @@
-def ab_s(a, b):
+def ab(a, b):
   if b < 0:
     op = add
   else:

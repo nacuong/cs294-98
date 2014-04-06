@@ -5,14 +5,13 @@ from optparse import OptionParser
 
 t_py = None
 t_rkt = None
-t_func = None
 t_ast = None
 
 s_py = None
 s_rkt = None
-s_func = None
 s_ast = None
 
+main_func = None
 lb = None
 ub = None
 
@@ -27,8 +26,9 @@ class RacketVisitor(ast.NodeVisitor):
   rkt_col_offset = 1
   pytorkt_loc = {}
 
-  def __init__(self, debug):
+  def __init__(self, debug, main):
     self.debug = debug
+    self.main = main
 
   """
   Print ast with indentation
@@ -465,6 +465,11 @@ class RacketVisitor(ast.NodeVisitor):
     for field, value in ast.iter_fields(node):
       if field == "name":
         name = value
+        if name == self.main:
+          if self.debug:
+            name = name + "_s"
+          else:
+            name = name + "_t"
         self.print_field_value(field, value)
         # declare a function with name
         if self.debug:
@@ -548,9 +553,9 @@ class RacketVisitor(ast.NodeVisitor):
 
     return (self.racket, self.pytorkt_loc)
 
-def translate_to_racket(my_ast, rkt, func, debug):
+def translate_to_racket(my_ast, rkt, debug):
   DefineVisitor().visit(my_ast)
-  (racket, pytorkt_loc) = RacketVisitor(debug).visit(my_ast)
+  (racket, pytorkt_loc) = RacketVisitor(debug, main_func).visit(my_ast)
 
   print(pytorkt_loc)
 
@@ -560,14 +565,16 @@ def translate_to_racket(my_ast, rkt, func, debug):
   f.write("(require \"util.rkt\")\n")
   if debug:
     f.write("(require rosette/lang/debug)\n")
-  f.write("(provide " + func + ")\n")
+    f.write("(provide " + main_func + "_s)\n")
+  else:
+    f.write("(provide " + main_func + "_t)\n")
   f.write(racket)
   f.close()
 
 
 def autograde():
-  t_args = ParamVisitor(t_func).visit(t_ast)
-  s_args = ParamVisitor(s_func).visit(s_ast)
+  t_args = ParamVisitor(main_func).visit(t_ast)
+  s_args = ParamVisitor(main_func).visit(s_ast)
 
   if not len(t_args) == len(s_args):
     print "Numbers of arguments to the main functions are different."
@@ -590,13 +597,14 @@ def autograde():
                           "(>= i" + str(i) + " " + str(lb) + ")" \
                           for i in xrange(n)]) \
             + "))\n")
-  f.write("   #:guarantee (assert (eq? (" + t_func + args + ") (" + s_func + args + ")))))\n\n")
+  f.write("   #:guarantee (assert (eq? (" + main_func + "_t" + args + ") " + \
+            "(" + main_func + "_s" + args + ")))))\n\n")
 
   concrete_args = "".join([" (evaluate i" + str(i) + " ce-model)" for i in xrange(n)])
   f.write("(define sol\n")
   f.write("  (debug [(lambda (x) (or (boolean? x) (number? x)))]\n")
-  f.write("    (assert (eq? (" + t_func + concrete_args + ") (" \
-            + s_func + concrete_args + ")))))\n")
+  f.write("    (assert (eq? (" + main_func + "_t" + concrete_args + ") (" \
+            + main_func + "_s" + concrete_args + ")))))\n")
   f.write("(define sol-list (remove-duplicates (filter-map sym-origin (core sol))))\n")
   f.write("(define return (map (lambda (item) (list " + \
             "(syntax-line item) (syntax-column item) (syntax-span item) " + \
@@ -608,29 +616,28 @@ def autograde():
 if __name__ == '__main__':
 
   parser = OptionParser()
-  parser.add_option("-a", "--teacher-py")
-  parser.add_option("-b", "--teacher-func")
-  parser.add_option("-x", "--student-py")
-  parser.add_option("-y", "--student-func")
+  parser.add_option("-t", "--teacher-py")
+  parser.add_option("-s", "--student-py")
+  parser.add_option("-m", "--main")
   parser.add_option("-l", "--lower-bound", default=-10000)
   parser.add_option("-u", "--upper-bound", default=10000)
   (options, args) = parser.parse_args()
 
-  if options.teacher_py and options.teacher_func:
+  main_func = options.main
+
+  if options.teacher_py:
     t_py = options.teacher_py
-    t_func = options.teacher_func
     t_rkt = t_py.strip(".py") + ".rkt"
     t_ast = ast.parse(open(t_py,"r").read())
-    translate_to_racket(t_ast, t_rkt, t_func, False)
+    translate_to_racket(t_ast, t_rkt, False)
 
-  if options.student_py and options.student_func:
+  if options.student_py:
     s_py = options.student_py
-    s_func = options.student_func
     s_rkt = s_py.strip(".py") + ".rkt"
     s_ast = ast.parse(open(s_py,"r").read())
-    translate_to_racket(s_ast, s_rkt, s_func, True)
+    translate_to_racket(s_ast, s_rkt, True)
 
-  if t_py and s_py and options.teacher_func and options.student_func:
+  if t_py and s_py:
     lb = options.lower_bound
     ub = options.upper_bound
     autograde()

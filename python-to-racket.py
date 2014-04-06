@@ -1,4 +1,5 @@
-import ast, sys, json, getopt
+import ast, sys, json, getopt, subprocess
+import json
 from define_visitor import DefineVisitor
 from param_visitor import ParamVisitor
 from optparse import OptionParser
@@ -13,12 +14,14 @@ s_rkt = None
 s_func = None
 s_ast = None
 
+debug = True
+
 class JSONVisitorException(Exception):
   pass
 
 class RacketVisitor(ast.NodeVisitor):
   indent = 0
-  test = True
+  test = False
   racket = ""
   rkt_lineno = 5
   rkt_col_offset = 1
@@ -55,7 +58,6 @@ class RacketVisitor(ast.NodeVisitor):
   def id_open(self, x):
     if self.debug and (x.__class__.__name__ == "Name" or x.__class__.__name__ == "Num"):
       self._output("(")
-      print(str(self.rkt_lineno) + "," + str(self.rkt_col_offset) + " : " + str(x.lineno) + "," + str(x.col_offset))
       self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (x.lineno,
           x.col_offset)
       self._output("identity ")
@@ -393,8 +395,6 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent + 1
         self.indent_print(field + ":" + name)
         self.indent = self.indent - 1
-
-        print(str(self.rkt_lineno) + "," + str(self.rkt_col_offset) + " : " + str(node.lineno) + "," + str(node.col_offset) + " : " + name)
         self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
         self._output(name)
 
@@ -536,9 +536,12 @@ def translate_to_racket(my_ast, rkt, debug):
   DefineVisitor().visit(my_ast)
   (racket, rkttopy_loc) = RacketVisitor(debug).visit(my_ast)
 
-  print(rkttopy_loc)
+  if debug:
+    print(rkttopy_loc)
 
-  print(racket)
+  if debug:
+    print(racket)
+
   f = open(rkt, "w")
   f.write("#lang s-exp rosette\n")
   f.write("(require \"util.rkt\")\n")
@@ -548,6 +551,7 @@ def translate_to_racket(my_ast, rkt, debug):
   f.write(racket)
   f.close()
 
+  return rkttopy_loc
 
 def autograde():
   t_args = ParamVisitor(t_func).visit(t_ast)
@@ -597,6 +601,8 @@ if __name__ == '__main__':
   parser.add_option("-y", "--student-func")
   (options, args) = parser.parse_args()
 
+  rkttopy_loc_s = {}
+
   if options.teacher_py:
     t_py = options.teacher_py
     t_rkt = t_py.strip(".py") + ".rkt"
@@ -607,13 +613,29 @@ if __name__ == '__main__':
     s_py = options.student_py
     s_rkt = s_py.strip(".py") + ".rkt"
     s_ast = ast.parse(open(s_py,"r").read())
-    translate_to_racket(s_ast, s_rkt, True)
+    rkttopy_loc_s = translate_to_racket(s_ast, s_rkt, True)
 
   if t_py and s_py and options.teacher_func and options.student_func:
     t_func = options.teacher_func
     s_func = options.student_func
     autograde()
     
+  grade_result = subprocess.check_output(["racket", "grade.rkt"])
+  if debug:
+    print("Grade result from rossette:")
+    print(grade_result)
+
+  feedback = json.loads(grade_result)
+
+  #
+  # Generate feedback 2: location to be fixed
+  #
+  print("Location in python program to be fixed:")
+  for i in xrange(len(feedback)):
+    try:
+      print("\t" + str(rkttopy_loc_s[feedback[i][0], feedback[i][1]]))
+    except:
+      print("\t Key not found: " + str(feedback[i][0]) + ", " + str(feedback[i][1]))
 
   #print(ast.dump(ast.parse(sys.stdin.read())))
 

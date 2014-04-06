@@ -1,4 +1,5 @@
-import ast, sys, json, getopt
+import ast, sys, json, getopt, subprocess
+import json
 from define_visitor import DefineVisitor
 from param_visitor import ParamVisitor
 from optparse import OptionParser
@@ -15,16 +16,18 @@ main_func = None
 lb = None
 ub = None
 
+debug = True
+
 class JSONVisitorException(Exception):
   pass
 
 class RacketVisitor(ast.NodeVisitor):
   indent = 0
-  test = True
+  test = False
   racket = ""
-  rkt_lineno = 0
+  rkt_lineno = 5
   rkt_col_offset = 1
-  pytorkt_loc = {}
+  rkttopy_loc = {}
 
   def __init__(self, debug, main):
     self.debug = debug
@@ -57,7 +60,10 @@ class RacketVisitor(ast.NodeVisitor):
 
   def id_open(self, x):
     if self.debug and (x.__class__.__name__ == "Name" or x.__class__.__name__ == "Num"):
-      self._output("(identity ")
+      self._output("(")
+      self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (x.lineno,
+          x.col_offset)
+      self._output("identity ")
 
   def id_close(self, x):
     if self.debug and (x.__class__.__name__ == "Name" or x.__class__.__name__ == "Num"):
@@ -117,7 +123,7 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent_print(field + ":" + str(value))
         self.indent = self.indent - 1
 
-        self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
+        self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
         self._output(str(value))
 
   """
@@ -150,7 +156,7 @@ class RacketVisitor(ast.NodeVisitor):
     self.indent = self.indent - 1
     self.indent = self.indent - 1
 
-    self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
     self._output(" (" + self.op_to_string(ops))
 
     # process left
@@ -187,7 +193,7 @@ class RacketVisitor(ast.NodeVisitor):
     node.rkt_lineno = self.rkt_lineno
     node.rkt_col_offset = self.rkt_col_offset
 
-    self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
     self.output("(if")
     for field, value in ast.iter_fields(node):
       if field == "test":
@@ -230,8 +236,10 @@ class RacketVisitor(ast.NodeVisitor):
     node.rkt_lineno = self.rkt_lineno
     node.rkt_col_offset = self.rkt_col_offset
 
-    self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
+    # self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
+
     self.output(" (")
+
     for field, value in ast.iter_fields(node):
       if field == "func":
         self.indent_print(field + ":")
@@ -280,8 +288,9 @@ class RacketVisitor(ast.NodeVisitor):
     self.indent = self.indent - 1
     self.indent = self.indent - 1
 
-    self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
-    self._output("(" + self.op_to_string(op))
+    self._output("(")
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (right.lineno, right.col_offset - 1)
+    self._output(self.op_to_string(op))
 
     # process left
     self.indent_print("left:")
@@ -339,14 +348,14 @@ class RacketVisitor(ast.NodeVisitor):
 
     #print lhs, isinstance(lhs, ast.Name)
     if isinstance(lhs, ast.Name):
-      self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
+      self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
       self.output("(set!")
       self.visit(lhs)
       self.visit(rhs)
       self.outputln(")")
     elif isinstance(lhs, ast.Tuple):
       for l,r in zip(lhs.elts, rhs.elts):
-        self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
+        self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
         self.output("(set!")
         self.visit(l)
         self.id_open(r)
@@ -393,8 +402,7 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent + 1
         self.indent_print(field + ":" + name)
         self.indent = self.indent - 1
-
-        self.pytorkt_loc[(node.lineno, node.col_offset)] = (self.rkt_lineno, self.rkt_col_offset)
+        self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
         self._output(name)
 
   """
@@ -551,15 +559,18 @@ class RacketVisitor(ast.NodeVisitor):
         raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % value)
       self.indent = self.indent - 1
 
-    return (self.racket, self.pytorkt_loc)
+    return (self.racket, self.rkttopy_loc)
 
 def translate_to_racket(my_ast, rkt, debug):
   DefineVisitor().visit(my_ast)
-  (racket, pytorkt_loc) = RacketVisitor(debug, main_func).visit(my_ast)
+  (racket, rkttopy_loc) = RacketVisitor(debug, main_func).visit(my_ast)
 
-  print(pytorkt_loc)
+  if debug:
+    print(rkttopy_loc)
 
-  print(racket)
+  if debug:
+    print(racket)
+
   f = open(rkt, "w")
   f.write("#lang s-exp rosette\n")
   f.write("(require \"util.rkt\")\n")
@@ -571,6 +582,7 @@ def translate_to_racket(my_ast, rkt, debug):
   f.write(racket)
   f.close()
 
+  return rkttopy_loc
 
 def autograde():
   t_args = ParamVisitor(main_func).visit(t_ast)
@@ -624,6 +636,7 @@ if __name__ == '__main__':
   (options, args) = parser.parse_args()
 
   main_func = options.main
+  rkttopy_loc_s = {}
 
   if options.teacher_py:
     t_py = options.teacher_py
@@ -635,13 +648,29 @@ if __name__ == '__main__':
     s_py = options.student_py
     s_rkt = s_py.strip(".py") + ".rkt"
     s_ast = ast.parse(open(s_py,"r").read())
-    translate_to_racket(s_ast, s_rkt, True)
+    rkttopy_loc_s = translate_to_racket(s_ast, s_rkt, True)
 
   if t_py and s_py:
     lb = options.lower_bound
     ub = options.upper_bound
     autograde()
     
+  grade_result = subprocess.check_output(["racket", "grade.rkt"])
+  if debug:
+    print("Grade result from rossette:")
+    print(grade_result)
+
+  feedback = json.loads(grade_result)
+
+  #
+  # Generate feedback 2: location to be fixed
+  #
+  print("Location in python program to be fixed:")
+  for i in xrange(len(feedback)):
+    try:
+      print("\t" + str(rkttopy_loc_s[feedback[i][0], feedback[i][1]]))
+    except:
+      print("\t Key not found: " + str(feedback[i][0]) + ", " + str(feedback[i][1]))
 
   #print(ast.dump(ast.parse(sys.stdin.read())))
 

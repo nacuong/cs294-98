@@ -156,8 +156,9 @@ class RacketVisitor(ast.NodeVisitor):
     self.indent = self.indent - 1
     self.indent = self.indent - 1
 
-    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
-    self._output(" (" + self.op_to_string(ops))
+    self._output("(")
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (comparators.lineno, comparators.col_offset - 1)
+    self._output(self.op_to_string(ops))
 
     # process left
     self.indent_print("left:")

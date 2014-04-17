@@ -11,33 +11,48 @@
   (define-symbolic* choice number?)
   (list-ref lst choice))
 
-;; generate these
+;; AllNum
 (define (n?)
-  (define-symbolic* num number?)
-  (assert (and (< num 10) (>= num -10)))
-  num)
+  (define-symbolic* n number?)
+  (assert (and (< n 10) (>= n -10)))
+  n)
+
+;; For AllVarNum
+(define (n??)
+  (define-symbolic* nn number?)
+  (assert (and (< nn 10) (>= nn -10)))
+  nn)
 
 (define (f x y) (+ x y 3))
 
 (define (g x y)
+  ;; AllVar
   (define (v?)
-    (define-symbolic* var number?)
+    (define-symbolic* v number?)
     (cond
-      [(= var 0) x]
-      [(= var 1) y]))
+      [(= v 0) x]
+      [(= v 1) y]))
+
+  ;; For AllVarNum
+  (define (v??)
+    (define-symbolic* vv number?)
+    (cond
+      [(= vv 0) x]
+      [(= vv 1) y]))
   
+  ;; AllVarNum
   (define (??)
     (define-symbolic* is-var boolean?)
-    (if is-var (v?) (n?)))
+    (if is-var (v??) (n??)))
     
-  ;; (either (+ (??) (??) (??)) 
-  ;;         (- (??) (??) (??)) 
-  ;;         (* (??) (??) (??))))
+  (either (+ (??) (??) (??)) 
+          (- (??) (??) (??)) 
+          (* (??) (??) (??))))
 
   ;; Not working yet. Emina needs to support macro expansion.
   ;; ((either + - *) (??) (??) (??)))
 
-  (for/all ([o (either + - *)]) (o (??) (??) (??))))
+  ;(for/all ([o (either + - *)]) (o (??) (??) (??))))
 
 (define model
 (synthesize

@@ -3,6 +3,8 @@
 *.swp
 *.dep
 *.zo
+*~
+*#
 
 # C extensions
 *.so

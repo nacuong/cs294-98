@@ -30,9 +30,14 @@
     (define-symbolic* is-var boolean?)
     (if is-var (v?) (n?)))
     
-  (either (+ (??) (??) (??)) 
-          (- (??) (??) (??)) 
-          (* (??) (??) (??))))
+  ;; (either (+ (??) (??) (??)) 
+  ;;         (- (??) (??) (??)) 
+  ;;         (* (??) (??) (??))))
+
+  ;; Not working yet. Emina needs to support macro expansion.
+  ;; ((either + - *) (??) (??) (??)))
+
+  (for/all ([o (either + - *)]) (o (??) (??) (??))))
 
 (define model
 (synthesize
@@ -40,3 +45,5 @@
   ;#:assume (assert (and (= i0 1) (= i1 2)))
   #:assume (assert (and (< i0 10000) (> i0 -10000) (< i1 10000) (> i1 -10000)))
   #:guarantee (assert (eq? (f i0 i1) (g i0 i1)))))
+
+(pretty-display model)

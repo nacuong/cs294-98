@@ -25,7 +25,7 @@ class DefineVisitor(ast.NodeVisitor):
   def visit_Assign(self, node):
     for field, value in ast.iter_fields(node):
       if field == "targets":
-        print "targets = ", value[0]
+        # print "targets = ", value[0]
         lhs = value[0]
         if isinstance(lhs,ast.Name):
           self.visit_Lhs(value[0])
@@ -46,7 +46,7 @@ class DefineVisitor(ast.NodeVisitor):
     for field, value in ast.iter_fields(node):
       if field == "id":
         if not lookup(self.env,value):
-          print "Define var: ", value      
+          # print "Define var: ", value          
           self.env[value] = "var"
 
 
@@ -59,7 +59,7 @@ class DefineVisitor(ast.NodeVisitor):
       if field == "id":
         if not lookup(self.env,value):
           # primitive
-          print "Primitive value = ", value
+          # print "Primitive value = ", value
           if value in primitives:
             node.racket = primitives[value]
 
@@ -87,10 +87,10 @@ class DefineVisitor(ast.NodeVisitor):
       if field == "args":
         args = value
         for arg in args:
-          print "Arg: ", arg
+          #print "Arg: ", arg
           for field, value in ast.iter_fields(arg):
             if field == "id":
-              print "Define arg: ", value
+              #print "Define arg: ", value
               self.env[value] = "arg"
             else:
               JSONVisitorException("Unexpected error: argument's field is not id.")
@@ -116,13 +116,13 @@ class DefineVisitor(ast.NodeVisitor):
         for stmt in body:
           self.visit(stmt)
       elif field == "args":
-        print "FunctionDef: args: ", value
+        #print "FunctionDef: args: ", value
         self.visit(value)
 
     node.define = self.env
     self.env = self.env["__up__"]
     del node.define["__up__"]
-    print "Def define: ", node.define
+    #print "Def define: ", node.define
 
   """
   A visitor for module.
@@ -131,7 +131,7 @@ class DefineVisitor(ast.NodeVisitor):
     self.env = {"__up__": self.env}
 
     for field, value in ast.iter_fields(node):
-      print "Module: field = ", field, ", value = ", value
+      #print "Module: field = ", field, ", value = ", value
       if (isinstance(value, list)):
         for item in value:
           if isinstance(item, ast.AST):
@@ -144,7 +144,7 @@ class DefineVisitor(ast.NodeVisitor):
     node.define = self.env
     self.env = self.env["__up__"]
     del node.define["__up__"]
-    print "Module define: ", node.define
+    #print "Module define: ", node.define
 
   """
   """
@@ -152,9 +152,9 @@ class DefineVisitor(ast.NodeVisitor):
     if (not (isinstance(node, ast.AST))):
       raise JSONVisitorException("Unexpected error: Non-ast passed to visit.")
 
-    print "node: ", node
+    #print "node: ", node
     for field, value in ast.iter_fields(node):
-      print "field: ", field, " value: ", value
+      #print "field: ", field, " value: ", value
       if (isinstance(value, list)):
         for item in value:
           if isinstance(item, ast.AST):

@@ -61,4 +61,4 @@
   #:assume (assert (and (< i0 10000) (> i0 -10000) (< i1 10000) (> i1 -10000)))
   #:guarantee (assert (eq? (f i0 i1) (g i0 i1)))))
 
-(pretty-display model)
+(pretty-display (solution->list model))

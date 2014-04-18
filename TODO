@@ -1,0 +1,36 @@
+1) map synthesis result back to python
+2) how to mutate programs
+3) ask emina about list: rishabh-list2
+4) python to racket
+- for, list
+- tuple needs let
+  = s[first], s[last] = s[last], s[first]
+
+- if need begins
+  if (begin ...) (begin ...)
+
+- return
+  if x = 0:
+    return 0
+  else:
+    x = 1
+  x = x + 1
+  return x
+
+(define (f x)
+  (define ret #f)
+  (if (= x 0)
+    (set! ret 0)
+    (set! x 1))
+  (unless ret
+    (set! x (+ x 1))
+    (set! ret x))
+  ret)
+  
+- -= += *= /=
+
+======================================
+EXAMPLE for synthesis
+hw1-2, hw2-1, hw2-2, hw2-3, hw2-4
+rishabh-list
+

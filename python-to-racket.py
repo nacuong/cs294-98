@@ -1,7 +1,10 @@
 import ast, sys, json, getopt, subprocess
-import json
+import json, copy
 from define_visitor import DefineVisitor
 from param_visitor import ParamVisitor
+from print_visitor import PrintVisitor
+from mutate_visitor import MutateVisitor
+from mutator import OffByOne, TrySameType
 from optparse import OptionParser
 
 t_py = None
@@ -29,8 +32,9 @@ class RacketVisitor(ast.NodeVisitor):
   rkt_col_offset = 1
   rkttopy_loc = {}
 
-  def __init__(self, debug, main):
+  def __init__(self, debug, synthesis, main):
     self.debug = debug
+    self.synthesis = synthesis
     self.main = main
 
   """
@@ -108,6 +112,77 @@ class RacketVisitor(ast.NodeVisitor):
       return ">="
     else:
       raise JSONVisitorException("Unexpected error: Missed case: %s." % op)
+
+  """
+  A visitor for allnumvar expression. Generator for synthesis, do not need to
+  track line and column number.
+  """
+  def visit_AllNumVar(self, node):
+    self.output(" (??) ")
+
+    self.indent_print(self.__class__.__name__ + ":")
+    self.indent = self.indent + 1
+
+    for field, value in ast.iter_fields(node):
+      self.print_field_value(field, value)
+
+    self.indent = self.indent - 1
+
+  """
+  A visitor for allvar expression. Generator for synthesis, do not need to
+  track line and column number.
+  """
+  def visit_AllVar(self, node):
+    self.output(" (v?) ")
+
+    self.indent_print(self.__class__.__name__ + ":")
+    self.indent = self.indent + 1
+
+    for field, value in ast.iter_fields(node):
+      self.print_field_value(field, value)
+
+    self.indent = self.indent - 1
+
+  """
+  A visitor for allnum expression. Generator for synthesis, do not need to
+  track line and column number.
+  """
+  def visit_AllNum(self, node):
+    self.output(" (n?) ")
+
+    self.indent_print(self.__class__.__name__ + ":")
+    self.indent = self.indent + 1
+
+    for field, value in ast.iter_fields(node):
+      self.print_field_value(field, value)
+
+    self.indent = self.indent - 1
+
+  """
+  A visitor for either expression. Generator for synthesis, do not need to
+  track line and column number.
+
+  """
+  def visit_Either(self, node):
+    self.output(" (either")
+    self.indent_print(self.__class__.__name__ + ":")
+    self.indent = self.indent + 1
+
+    for field, value in ast.iter_fields(node):
+      if field == "choices":
+        self.indent_print(field + ":")
+        self.indent = self.indent + 1
+        for choice in value:
+          self.indent_print(choice.__class__.__name__ + ":")
+          self.indent = self.indent + 1
+          self.visit(choice)
+          self.indent = self.indent - 1
+        self.indent = self.indent - 1 
+      else:
+        self.print_field_value(field, value)
+
+    self.indent = self.indent - 1
+    self.outputln(")")
 
   """
   A visitor for num expression
@@ -475,7 +550,7 @@ class RacketVisitor(ast.NodeVisitor):
       if field == "name":
         name = value
         if name == self.main:
-          if self.debug:
+          if self.debug or self.synthesis:
             name = name + "_s"
           else:
             name = name + "_t"
@@ -494,6 +569,32 @@ class RacketVisitor(ast.NodeVisitor):
         self.visit(value)
         self.indent = self.indent - 1
         self.outputln(")")
+        if self.synthesis:
+          # all var
+          self.outputln("\t(define (v?)")
+          self.outputln("\t\t(define-symbolic* v number?)") 
+          self.outputln("\t\t(cond")
+          count = 0
+          for var in node.define:
+            self.outputln("\t\t\t[(= v " + str(count) +") " + var + "]") 
+            count += 1
+          self.outputln("\t))")
+
+          # all var num
+          self.outputln("\t(define (v??)")
+          self.outputln("\t\t(define-symbolic* vv number?)") 
+          self.outputln("\t\t(cond")
+          count = 0
+          for var in node.define:
+            self.outputln("\t\t\t[(= vv " + str(count) +") " + var + "]") 
+            count += 1
+          self.outputln("\t))")
+
+          # all var num
+          self.outputln("\t(define (??)")
+          self.outputln("\t\t(define-symbolic* is-var boolean?)")
+          self.outputln("\t\t(if is-var (v??) (n??)))\n")
+
         for var in node.define:
           if node.define[var] == "var":
             self.outputln("(define " + var + " #f)")
@@ -564,7 +665,7 @@ class RacketVisitor(ast.NodeVisitor):
 
 def translate_to_racket(my_ast, rkt, debug):
   DefineVisitor().visit(my_ast)
-  (racket, rkttopy_loc) = RacketVisitor(debug, main_func).visit(my_ast)
+  (racket, rkttopy_loc) = RacketVisitor(debug, False, main_func).visit(my_ast)
 
   if debug:
     print(rkttopy_loc)
@@ -584,6 +685,63 @@ def translate_to_racket(my_ast, rkt, debug):
   f.close()
 
   return rkttopy_loc
+
+def generate_synthesizer(my_ast, synrkt, mutation): 
+  clone_ast = copy.deepcopy(my_ast)
+  MutateVisitor(mutation).visit(clone_ast)
+  (racket, rkttopy_loc) = RacketVisitor(False, True, main_func).visit(clone_ast)
+
+  if (debug):
+    print racket
+
+  s_args = ParamVisitor(main_func).visit(s_ast)
+  n = len(s_args)
+  args = ""
+  args_cnst = ""
+
+  for i in xrange(n):
+    args += "i" + str(i) + " "
+
+  for i in xrange(n):
+    args_cnst += "(< i" + str(i) + " 10) (> i" + str(i) + " -10)"
+
+  f = open(synrkt, "w")
+  f.write("#lang s-exp rosette\n")
+  f.write("(require \"util.rkt\")\n")
+  f.write("(require \"../" + t_rkt + "\")\n\n")
+  f.write("(define-symbolic ")
+  f.write(args)
+  f.write("number?)\n")
+  f.write("(configure [bitwidth 32] [loop-bound 20])\n")
+  f.write("\n")
+  f.write("(define-syntax-rule (either a ...)\n")
+  f.write("\t(choose (list a ...)))\n")
+  f.write("\n")
+  f.write("(define (choose lst)\n")
+  f.write("\t(define-symbolic* choice number?)\n")
+  f.write("\t(list-ref lst choice))\n")
+  f.write("\n")
+  f.write("(define (n?)\n")
+  f.write("\t(define-symbolic* n number?)\n")
+  f.write("\t(assert (and (< n 10) (>= n -10)))\n")
+  f.write("\tn)\n");
+  f.write("\n")
+  f.write("(define (n??)\n")
+  f.write("\t(define-symbolic* nn number?)\n")
+  f.write("\t(assert (and (< nn 10) (>= nn -10)))\n")
+  f.write("\tnn)\n")
+  f.write(racket)
+  f.write("(define model\n")
+  f.write("(synthesize\n")
+  f.write("\t#:forall (list " + args + ")\n")
+  f.write("\t#:assume (assert (and " + args_cnst + "))\n")
+  f.write("\t#:guarantee (assert (eq? ")
+  f.write("(" + main_func + "_t " + args + ") ")
+  f.write("(" + main_func + "_s " + args + ")")
+  f.write("))))\n");
+  f.write("\n")
+  f.write("(pretty-display (solution->list model))")
+  f.close()
 
 def autograde():
   t_args = ParamVisitor(main_func).visit(t_ast)
@@ -606,25 +764,25 @@ def autograde():
   f.write("(define ce-model\n")
   f.write("  (verify\n")
   f.write("   #:assume (assert (and " \
-            + " ".join(["(< i" + str(i) + " " + str(ub) + ") " + \
-                          "(>= i" + str(i) + " " + str(lb) + ")" \
-                          for i in xrange(n)]) \
-            + "))\n")
+      + " ".join(["(< i" + str(i) + " " + str(ub) + ") " + \
+      "(>= i" + str(i) + " " + str(lb) + ")" \
+      for i in xrange(n)]) \
+      + "))\n")
   f.write("   #:guarantee (assert (eq? (" + main_func + "_t" + args + ") " + \
-            "(" + main_func + "_s" + args + ")))))\n\n")
+      "(" + main_func + "_s" + args + ")))))\n\n")
 
   concrete_args = "".join([" (evaluate i" + str(i) + " ce-model)" for i in xrange(n)])
   f.write("(define sol\n")
   f.write("  (debug [(lambda (x) (or (boolean? x) (number? x)))]\n")
   f.write("    (assert (eq? (" + main_func + "_t" + concrete_args + ") (" \
-            + main_func + "_s" + concrete_args + ")))))\n")
+      + main_func + "_s" + concrete_args + ")))))\n")
   f.write("(define sol-list (remove-duplicates (filter-map sym-origin (core sol))))\n")
   f.write("(define return (map (lambda (item) (list " + \
-            "(syntax-line item) (syntax-column item) (syntax-span item) " + \
-            "(symbol->string (second (identifier-binding item))))) " + \
-            "(filter syntax-line sol-list)))\n")
+      "(syntax-line item) (syntax-column item) (syntax-span item) " + \
+      "(symbol->string (second (identifier-binding item))))) " + \
+      "(filter syntax-line sol-list)))\n")
   f.write("(write-json return)")
-                         
+
 
 if __name__ == '__main__':
 
@@ -655,23 +813,32 @@ if __name__ == '__main__':
     lb = options.lower_bound
     ub = options.upper_bound
     autograde()
-    
-  grade_result = subprocess.check_output(["racket", "grade.rkt"])
-  if debug:
-    print("Grade result from rossette:")
-    print(grade_result)
 
-  feedback = json.loads(grade_result)
+#  grade_result = subprocess.check_output(["racket", "grade.rkt"])
+#  if debug:
+#    print("Grade result from rossette:")
+#    print(grade_result)
+
+#  feedback = json.loads(grade_result)
 
   #
   # Generate feedback 2: location to be fixed
   #
-  print("Location in python program to be fixed:")
-  for i in xrange(len(feedback)):
-    try:
-      print("\t" + str(rkttopy_loc_s[feedback[i][0], feedback[i][1]]))
-    except:
-      print("\t Key not found: " + str(feedback[i][0]) + ", " + str(feedback[i][1]))
+#  print("Location in python program to be fixed:")
+#  for i in xrange(len(feedback)):
+#    try:
+#      print("\t" + str(rkttopy_loc_s[feedback[i][0], feedback[i][1]]))
+#    except:
+#      print("\t Key not found: " + str(feedback[i][0]) + ", " + str(feedback[i][1]))
 
   #print(ast.dump(ast.parse(sys.stdin.read())))
 
+  #
+  # Generate mutated python program to racket
+  #
+  if options.student_py:
+    s_py = options.student_py
+    synrkt = s_py.strip(".py") + "_synr.rkt"
+    offbyone = OffByOne()
+    sametype = TrySameType()
+    generate_synthesizer(s_ast, synrkt, {(5,15):offbyone, (5,18):sametype})

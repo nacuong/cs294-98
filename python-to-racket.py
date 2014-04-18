@@ -740,7 +740,14 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("(" + main_func + "_s " + args + ")")
   f.write("))))\n");
   f.write("\n")
-  f.write("(pretty-display (solution->list model))")
+  f.write("(define solution (solution->list model))\n")
+  f.write("(for-each (lambda (sol)\n")
+  f.write("\t(define val (cdr sol))\n")
+  f.write("\t(define sym (sym-name (car sol)))\n")
+  f.write("\t(define symtype (syntax->datum (car sym)))\n")
+  f.write("\t(define symid (cdr sym))\n")
+  f.write("\t(printf \"~a:~a:~a\\n\" symtype symid val))\n")
+  f.write("\t solution)\n")
   f.close()
 
 def autograde():

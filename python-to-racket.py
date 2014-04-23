@@ -4,6 +4,7 @@ from define_visitor import DefineVisitor
 from param_visitor import ParamVisitor
 from print_visitor import PrintVisitor
 from mutate_visitor import MutateVisitor
+from source_visitor import SourceVisitor
 from mutator import OffByOne, TrySameType
 from synthesis_visitor import SynthesisVisitor
 from optparse import OptionParser
@@ -769,15 +770,18 @@ def run_synthesizer(ast, synrkt, fix, queue):
       elif res[0] == "n":
         allnum[int(res[1])] = int(res[2])
 
-    if debug:
-      print either
-      print allnum
+    #if debug:
+      #print either
+      #print allnum
 
-      print "Mutated ast:"
-      PrintVisitor().visit(mutated_ast)
+      #print "Mutated ast:"
+      #PrintVisitor().visit(mutated_ast)
 
-    synr_ast = SynthesisVisitor(either, allnum).visit(mutated_ast)
-    queue.put(synr_ast)
+    synthesizer = SynthesisVisitor(either, allnum)
+    synthesizer.visit(mutated_ast)
+    fixes = synthesizer.getFixes()
+
+    queue.put(fixes)
 
 def autograde():
   t_args = ParamVisitor(main_func).visit(t_ast)
@@ -899,6 +903,8 @@ if __name__ == '__main__':
 
     while True:
       if not queue.empty():
-        synr_ast = queue.get()
-        PrintVisitor.visit(synr_ast)
+        fixes = queue.get()
+        for fix in fixes:
+          print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
+          print "\t " + SourceVisitor().visit(fix)
         break

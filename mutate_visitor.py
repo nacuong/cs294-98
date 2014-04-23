@@ -9,14 +9,17 @@ class MutateVisitor(ast.NodeVisitor):
 
   def __init__(self, mutator_map):
     self.mutator_map = mutator_map
-    print self.mutator_map
+    # print self.mutator_map
 
   """
   A visitor for num expression
   """
   def visit_Num(self, node):
     if (node.lineno, node.col_offset) in self.mutator_map:
-      return self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+      mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+      mutated_node.lineno = node.lineno
+      mutated_node.col_offset = node.col_offset
+      return mutated_node
     else:
       return node
 
@@ -72,7 +75,11 @@ class MutateVisitor(ast.NodeVisitor):
   """
   def visit_UnaryOp(self, node):
     if (node.lineno, node.col_offset) in self.mutator_map:
-      return self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+      mutated_node =  self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+      mutated_node.lineno = node.lineno
+      mutated_node.col_offset = node.col_offset
+
+      return mutated_node
     else:
       op = None
       operand = None
@@ -134,7 +141,10 @@ class MutateVisitor(ast.NodeVisitor):
   """
   def visit_Name(self, node):
     if (node.lineno, node.col_offset) in self.mutator_map:
-      return self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+      mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+      mutated_node.lineno = node.lineno
+      mutated_node.col_offset = node.col_offset
+      return mutated_node
     else:
       return node
 
@@ -189,7 +199,7 @@ if __name__ == '__main__':
   # Run: python mutate_visitor.py < tests/hw2-1-s.py
   my_ast = ast.parse(sys.stdin.read())
   PrintVisitor().visit(my_ast)
-  print "-------------------------------------"
+  # print "-------------------------------------"
   new_ast = copy.deepcopy(my_ast)
   offbyone = OffByOne()
   sametype = TrySameType()

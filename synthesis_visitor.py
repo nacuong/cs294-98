@@ -7,12 +7,20 @@ class SynthesisVisitor(ast.NodeVisitor):
     self.either_map = either_map
     self.num_map = num_map
 
+  def getFixes(self):
+    return self.fixes
+
   """
   A visitor for either
   """
   def visit_Either(self, node):
     if node.id in self.either_map:
-      return node.choices[self.either_map[node.id]]
+      fix = node.choices[self.either_map[node.id]]
+      fix.lineno = node.lineno
+      fix.col_offset = node.col_offset
+      self.fixes.append(fix)
+
+      return fix
     else:
       return node
 
@@ -21,7 +29,12 @@ class SynthesisVisitor(ast.NodeVisitor):
   """
   def visit_AllNum(self, node):
     if node.id in self.num_map:
-      return ast.Num(self.num_map[node.id])
+      fix = ast.Num(self.num_map[node.id])
+      fix.lineno = node.lineno
+      fix.col_offset = node.col_offset
+      self.fixes.append(fix)
+
+      return fix
     else:
       return node
 

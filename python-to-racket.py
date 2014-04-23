@@ -5,7 +5,9 @@ from param_visitor import ParamVisitor
 from print_visitor import PrintVisitor
 from mutate_visitor import MutateVisitor
 from mutator import OffByOne, TrySameType
+from synthesis_visitor import SynthesisVisitor
 from optparse import OptionParser
+from multiprocessing import Process, Queue
 
 t_py = None
 t_rkt = None
@@ -750,6 +752,33 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("\t solution)\n")
   f.close()
 
+  return clone_ast
+
+def run_synthesizer(ast, synrkt, fix, queue):
+  mutated_ast = generate_synthesizer(ast, synrkt, fix)
+
+  either = {}
+  allnum = {}
+  synr_result = subprocess.check_output(["racket", synrkt])
+
+  if synr_result:
+    for line in synr_result.split('\n'): 
+      res = line.split(':')
+      if res[0] == "choice":
+        either[int(res[1])] = int(res[2])
+      elif res[0] == "n":
+        allnum[int(res[1])] = int(res[2])
+
+    if debug:
+      print either
+      print allnum
+
+      print "Mutated ast:"
+      PrintVisitor().visit(mutated_ast)
+
+    synr_ast = SynthesisVisitor(either, allnum).visit(mutated_ast)
+    queue.put(synr_ast)
+
 def autograde():
   t_args = ParamVisitor(main_func).visit(t_ast)
   s_args = ParamVisitor(main_func).visit(s_ast)
@@ -848,4 +877,28 @@ if __name__ == '__main__':
     synrkt = s_py.strip(".py") + "_synr.rkt"
     offbyone = OffByOne()
     sametype = TrySameType()
-    generate_synthesizer(s_ast, synrkt, {(5,15):offbyone, (5,18):sametype})
+
+    bugs = [(5,15), (5,18)]
+    mutator = [offbyone, sametype]
+    fixes = []
+    for i in xrange(0, len(mutator)):
+      fix = {}
+      fix[bugs[0]] = mutator[i]
+      for j in xrange(0, len(mutator)):
+        fix[bugs[1]] = mutator[j]
+        fixes.append(copy.deepcopy(fix))
+
+    queue = Queue()
+    workers = []
+    for i in xrange(0, len(fixes)):
+      workers.append(Process(target=run_synthesizer, args=(s_ast, synrkt + "_"
+        + str(i), fixes[i], queue)))
+
+    for i in xrange(0, len(fixes)):
+      workers[i].start()
+
+    while True:
+      if not queue.empty():
+        synr_ast = queue.get()
+        PrintVisitor.visit(synr_ast)
+        break

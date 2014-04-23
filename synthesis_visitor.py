@@ -1,6 +1,7 @@
 import ast, sys, copy
 
 class SynthesisVisitor(ast.NodeVisitor):
+  fixes = []
 
   def __init__(self, either_map, num_map):
     self.either_map = either_map

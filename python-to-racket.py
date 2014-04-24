@@ -32,6 +32,7 @@ class RacketVisitor(ast.NodeVisitor):
   test = True
   racket = ""
   rkt_lineno = 5
+  func_node = None
   rkt_col_offset = 1
   rkttopy_loc = {}
 
@@ -544,6 +545,7 @@ class RacketVisitor(ast.NodeVisitor):
     args = None
     body = None
     decorator_list = None
+    self.func_node = node
 
     # associate racket line and column to node
     node.rkt_lineno = self.rkt_lineno
@@ -903,6 +905,11 @@ if __name__ == '__main__':
 
     while True:
       if not queue.empty():
+        # terminate all processes
+        for i in xrange(0, len(fixes)):
+          if workers[i].is_alive():
+            workers[i].terminate()
+        # display results
         fixes = queue.get()
         for fix in fixes:
           print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 

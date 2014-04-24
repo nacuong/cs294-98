@@ -762,6 +762,7 @@ def run_synthesizer(ast, synrkt, fix, queue):
 
   either = {}
   allnum = {}
+  allvar = {}
   synr_result = subprocess.check_output(["racket", synrkt])
 
   if synr_result:
@@ -771,6 +772,8 @@ def run_synthesizer(ast, synrkt, fix, queue):
         either[int(res[1])] = int(res[2])
       elif res[0] == "n":
         allnum[int(res[1])] = int(res[2])
+      elif res[0] == "v":
+        allvar[int(res[1])] = int(res[2])
 
     #if debug:
       #print either
@@ -779,7 +782,7 @@ def run_synthesizer(ast, synrkt, fix, queue):
       #print "Mutated ast:"
       #PrintVisitor().visit(mutated_ast)
 
-    synthesizer = SynthesisVisitor(either, allnum)
+    synthesizer = SynthesisVisitor(either, allnum, allvar)
     synthesizer.visit(mutated_ast)
     fixes = synthesizer.getFixes()
 

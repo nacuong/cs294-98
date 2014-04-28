@@ -1,7 +1,10 @@
 1) map synthesis result back to python
 2) how to mutate programs
 3) ask emina about list: rishabh-list2
-4) python to racket
+4) parallelization vs combination
+5) individualized error model vs generic error model
+
+===== python to racket ====
 - for, list
 - tuple needs let
   = s[first], s[last] = s[last], s[first]
@@ -31,6 +34,8 @@
 
 ======================================
 EXAMPLE for synthesis
-hw1-2, hw2-1, hw2-2, hw2-3, hw2-4
+hw1-2, hw2-1, hw2-2 (tweak)
+hw1-4 (hailstone)
 rishabh-list
+http://sketch1.csail.mit.edu/python-autofeedback/new-encoding/
 

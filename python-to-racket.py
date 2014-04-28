@@ -32,6 +32,7 @@ class RacketVisitor(ast.NodeVisitor):
   test = True
   racket = ""
   rkt_lineno = 5
+  func_node = None
   rkt_col_offset = 1
   rkttopy_loc = {}
 
@@ -544,6 +545,7 @@ class RacketVisitor(ast.NodeVisitor):
     args = None
     body = None
     decorator_list = None
+    self.func_node = node
 
     # associate racket line and column to node
     node.rkt_lineno = self.rkt_lineno
@@ -760,6 +762,7 @@ def run_synthesizer(ast, synrkt, fix, queue):
 
   either = {}
   allnum = {}
+  allvar = {}
   synr_result = subprocess.check_output(["racket", synrkt])
 
   if synr_result:
@@ -769,6 +772,8 @@ def run_synthesizer(ast, synrkt, fix, queue):
         either[int(res[1])] = int(res[2])
       elif res[0] == "n":
         allnum[int(res[1])] = int(res[2])
+      elif res[0] == "v":
+        allvar[int(res[1])] = int(res[2])
 
     #if debug:
       #print either
@@ -777,7 +782,7 @@ def run_synthesizer(ast, synrkt, fix, queue):
       #print "Mutated ast:"
       #PrintVisitor().visit(mutated_ast)
 
-    synthesizer = SynthesisVisitor(either, allnum)
+    synthesizer = SynthesisVisitor(either, allnum, allvar)
     synthesizer.visit(mutated_ast)
     fixes = synthesizer.getFixes()
 
@@ -903,6 +908,11 @@ if __name__ == '__main__':
 
     while True:
       if not queue.empty():
+        # terminate all processes
+        for i in xrange(0, len(fixes)):
+          if workers[i].is_alive():
+            workers[i].terminate()
+        # display results
         fixes = queue.get()
         for fix in fixes:
           print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 

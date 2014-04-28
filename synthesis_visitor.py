@@ -2,10 +2,12 @@ import ast, sys, copy
 
 class SynthesisVisitor(ast.NodeVisitor):
   fixes = []
+  allvars = []
 
-  def __init__(self, either_map, num_map):
+  def __init__(self, either_map, num_map, var_map):
     self.either_map = either_map
     self.num_map = num_map
+    self.var_map = var_map
 
   def getFixes(self):
     return self.fixes
@@ -30,6 +32,20 @@ class SynthesisVisitor(ast.NodeVisitor):
   def visit_AllNum(self, node):
     if node.id in self.num_map:
       fix = ast.Num(self.num_map[node.id])
+      fix.lineno = node.lineno
+      fix.col_offset = node.col_offset
+      self.fixes.append(fix)
+
+      return fix
+    else:
+      return node
+
+  """
+  A visitor for all var
+  """
+  def visit_AllVar(self, node):
+    if node.id in self.var_map:
+      fix = ast.Name(allvars[node.id], ast.Load)
       fix.lineno = node.lineno
       fix.col_offset = node.col_offset
       self.fixes.append(fix)
@@ -175,6 +191,7 @@ class SynthesisVisitor(ast.NodeVisitor):
   A visitor for function definition.
   """
   def visit_FunctionDef(self, node):
+    self.allvars = node.define
     for field, value in ast.iter_fields(node):
       if field == "body":
         node.body = [self.visit(stmt) for stmt in value]

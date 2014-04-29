@@ -1,7 +1,7 @@
 import ast, copy
 from synthesis_ast import Either, AllNum, AllVar, AllNumVar
 
-class PreserverStructure(ast.NodeVisitor):
+class PreserveStructure(ast.NodeVisitor):
   def visit_BinOp(self, node):
     left = None
     op = None

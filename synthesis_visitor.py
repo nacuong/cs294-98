@@ -45,7 +45,7 @@ class SynthesisVisitor(ast.NodeVisitor):
   """
   def visit_AllVar(self, node):
     if node.id in self.var_map:
-      fix = ast.Name(allvars[node.id], ast.Load)
+      fix = ast.Name(self.allvars[node.id], ast.Load)
       fix.lineno = node.lineno
       fix.col_offset = node.col_offset
       self.fixes.append(fix)
@@ -58,6 +58,27 @@ class SynthesisVisitor(ast.NodeVisitor):
   A visitor for num expression
   """
   def visit_Num(self, node):
+    return node
+
+  """
+  A visitor for binop expression
+  """
+  def visit_BinOp(self, node):
+    left = None
+    right = None
+    op = None
+    for field, value in ast.iter_fields(node):
+      if field == "left":
+        left = value
+      elif field == "op":
+        op = value
+      elif field == "right":
+        right = value
+
+    node.op = self.visit(op)
+    node.right = self.visit(right)
+    node.left = self.visit(left)
+
     return node
 
   """

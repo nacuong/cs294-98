@@ -62,10 +62,10 @@
 (define total #f)
 (set! total (either ( + 0 1) ( - 0 1))
 )
-(set! k (n?) )
+(set! k 1)
 (while  ( <= k n)
 (set! total ( * ( square k) total))
-(set! k ( + k 1))
+(set! k ( + (v?)  1))
 )
  total)
 (define model
@@ -73,7 +73,7 @@
 	#:forall (list i0 )
 	#:assume (assert (and (< i0 10) (> i0 -10)))
 	#:guarantee (assert (eq? (product_t i0 ) (product_s i0 )))))
-
+(pretty-display (solution->list model))
 (define solution (solution->list model))
 (for-each (lambda (sol)
 	(define val (cdr sol))

@@ -887,7 +887,9 @@ if __name__ == '__main__':
     offbyone = OffByOne()
     sametype = TrySameType()
 
-    bugs = [(5,15), (5,18)]
+    #bugs = [(5,15), (5,18), (7,38)]
+    #mutator = [offbyone, sametype, sametype]
+    bugs = [(5,15),(7,38)]
     mutator = [offbyone, sametype]
     fixes = []
     for i in xrange(0, len(mutator)):

@@ -4,5 +4,5 @@ def square(x):
 def product(n):
     total, k = 0, 1
     while k <= n:
-        total, k = square(k) * total, k + 1
+        total, k = square(k) * total, total + 1
     return total

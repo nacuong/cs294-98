@@ -24,6 +24,28 @@ class MutateVisitor(ast.NodeVisitor):
       return node
 
   """
+  A visitor for binop expression
+  """
+  def visit_BinOp(self, node):
+    left = None
+    op = None
+    right = None
+    for field, value in ast.iter_fields(node):
+      if field == "left":
+        left = value
+      elif field == "op":
+        op = value
+      elif field == "right":
+        right = value
+
+    node.left = self.visit(left)
+    node.right = self.visit(right)
+    node.op = self.visit(op)
+
+    return node
+
+
+  """
   A visitor for compare expression
   """
   def visit_Compare(self, node):
@@ -203,5 +225,6 @@ if __name__ == '__main__':
   new_ast = copy.deepcopy(my_ast)
   offbyone = OffByOne()
   sametype = TrySameType()
-  MutateVisitor({(5,15):offbyone,(5,18):sametype}).visit(new_ast)
+  # MutateVisitor({(5,15):offbyone,(5,18):sametype}).visit(new_ast)
+  MutateVisitor({(7,38):sametype}).visit(new_ast)
   PrintVisitor().visit(new_ast)

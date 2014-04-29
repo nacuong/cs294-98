@@ -61,10 +61,10 @@
 (define k #f)
 (define total #f)
 (set! total (n?) )
-(set! k (n?) )
+(set! k 1)
 (while  ( <= k n)
 (set! total ( * ( square k) total))
-(set! k ( + k 1))
+(set! k ( + (v?)  1))
 )
  total)
 (define model

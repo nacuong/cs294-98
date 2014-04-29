@@ -5,6 +5,7 @@
 *.zo
 *~
 *#
+*.rkt_*
 
 # C extensions
 *.so

@@ -19,8 +19,8 @@ s_rkt = None
 s_ast = None
 
 main_func = None
-lb = None
-ub = None
+lb = -10
+ub = 10
 
 debug = True
 
@@ -97,15 +97,15 @@ class RacketVisitor(ast.NodeVisitor):
     elif isinstance(op, ast.Sub):
       return "-"
     elif isinstance(op, ast.Div):
-      return "/"
+      return "quotient" # TODO
     elif isinstance(op, ast.Mod):
-      return "%"
+      return "remainder"
     elif isinstance(op, ast.Pow):
-      return "^"
+      return "expt"
     elif isinstance(op, ast.Eq):
-      return "==" # TODO: confirm this
+      return "equal?"
     elif isinstance(op, ast.NotEq):
-      return "!=" # TODO: confirm this
+      return "(lambda (x y) (not (equal? x y)))"
     elif isinstance(op, ast.Lt):
       return "<"
     elif isinstance(op, ast.LtE):
@@ -114,6 +114,8 @@ class RacketVisitor(ast.NodeVisitor):
       return ">"
     elif isinstance(op, ast.GtE):
       return ">="
+    elif isinstance(op, ast.FloorDiv):
+      return "quotient"
     else:
       raise JSONVisitorException("Unexpected error: Missed case: %s." % op)
 
@@ -284,7 +286,9 @@ class RacketVisitor(ast.NodeVisitor):
         self.visit(value)
         self.indent = self.indent - 1
         self.indent = self.indent - 1
+        self.newline()
       elif field == "body":
+        self.outputln("(begin")
         self.indent_print(field + ":")
         self.indent = self.indent + 1
         for stmt in value:
@@ -293,7 +297,9 @@ class RacketVisitor(ast.NodeVisitor):
           self.visit(stmt)
           self.indent = self.indent - 1
         self.indent = self.indent - 1
+        self.outputln(")")
       elif field == "orelse":
+        self.outputln("(begin")
         self.indent_print(field + ":")
         self.indent = self.indent + 1
         for stmt in value:
@@ -302,10 +308,11 @@ class RacketVisitor(ast.NodeVisitor):
           self.visit(stmt)
           self.indent = self.indent - 1
         self.indent = self.indent - 1
+        self.outputln(")")
       else:
         self.print_field_value(field, value)
 
-    self.newline()
+    self.outputln(")")
 
   """
   A visitor for call expression
@@ -317,26 +324,69 @@ class RacketVisitor(ast.NodeVisitor):
     node.rkt_col_offset = self.rkt_col_offset
 
     # self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
-
-    self.output(" (")
-
+    func = None
+    args = None
+    
     for field, value in ast.iter_fields(node):
       if field == "func":
-        self.indent_print(field + ":")
-        self.indent = self.indent + 1
-        self.indent_print(value.__class__.__name__ + ":")
-        self.visit(value)
-        self.indent = self.indent - 1
+        func = value
       elif field == "args":
-        self.indent_print(field + ":")
+        args = value
+
+    print "func class =", func.__class__
+    if func.__class__.__name__ == "Attribute":
+      # Attribute
+      self.indent_print("Attribute:")
+      self.indent = self.indent + 1
+      self.indent_print("attr: " + func.attr)
+      if func.attr == "append":
+        self.output("(set!")
+
+        self.indent_print("value:")
         self.indent = self.indent + 1
-        for arg in value:
+        self.visit(func.value)
+        self.indent = self.indent - 1
+
+        self.output(" (cons")
+        self.indent_print("args:")
+        self.indent = self.indent + 1
+        for arg in args:
+          self.indent = self.indent + 1
           self.indent_print(arg.__class__.__name__ + ":")
           self.visit(arg)
+          self.indent = self.indent - 1
         self.indent = self.indent - 1
+
+        self.output(" ")
+        self.indent_print("value:")
+        self.indent = self.indent + 1
+        self.visit(func.value)
+        self.indent = self.indent - 1
+
+        self.outputln("))")
       else:
-        self.print_field_value(field, value)
-    self.output(")")
+        raise JSONVisitorException("Unexpected error: Missed case attribute: %s." % func.attr)
+      self.indent = self.indent + 1
+    else:
+      self.output(" (")
+
+      # name
+      self.indent_print("func:")
+      self.indent = self.indent + 1
+      self.visit(func)
+      self.indent = self.indent - 1
+
+      # args
+      self.indent_print("args:")
+      self.indent = self.indent + 1
+      for arg in args:
+        self.indent = self.indent + 1
+        self.indent_print(arg.__class__.__name__ + ":")
+        self.visit(arg)
+        self.indent = self.indent - 1
+      self.indent = self.indent - 1
+
+      self.output(")")
 
   """
   A visitor for binop expression
@@ -434,14 +484,23 @@ class RacketVisitor(ast.NodeVisitor):
       self.visit(rhs)
       self.outputln(")")
     elif isinstance(lhs, ast.Tuple):
-      for l,r in zip(lhs.elts, rhs.elts):
-        self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
+      self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
+      index = 0
+      self.outputln("(let (")
+      for r in rhs.elts:
+        self.output("[~temp" + str(index))
+        self.visit(r)
+        self.outputln("]")
+        index = index + 1
+      self.outputln(")")
+      
+      index = 0
+      for l in lhs.elts:
         self.output("(set!")
         self.visit(l)
-        self.id_open(r)
-        self.visit(r)
-        self.id_close(r)
-        self.outputln(")")
+        self.outputln(" ~temp" + str(index) + ")")
+        index = index + 1
+      self.outputln(")")
 
   """
   A visitor for return expression
@@ -484,6 +543,21 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent - 1
         self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
         self._output(name)
+
+  def visit_List(self,node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
+    self.output(" (list")
+    for field, value in ast.iter_fields(node):
+      self.indent = self.indent + 1
+      self.indent_print(field + ":")
+      if field == "elts":
+        for v in value:
+          self.visit(v)
+      self.indent = self.indent - 1
+    self.output(")")
 
   """
   A visitor for while statement
@@ -637,12 +711,22 @@ class RacketVisitor(ast.NodeVisitor):
 
     return self.generic_visit(node)
 
+  def visit_Load(self,node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+    print "Load", node.__dict__
+
+    for field, value in ast.iter_fields(node):
+      print "Load: field = ", field, value
+
   """
   Generic visitor for Python program. Syntax-directed translation to racket.
   Return the racket program and the mapping from (line, col) of python to
   (line, col) of racket program.
   """
   def generic_visit(self, node):
+    print "generic_visit ", node.__class__
     if (not (isinstance(node, ast.AST))):
       raise JSONVisitorException("Unexpected error: Non-ast passed to visit.  Please report to the TAs.")
 
@@ -708,7 +792,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
     args += "i" + str(i) + " "
 
   for i in xrange(n):
-    args_cnst += "(< i" + str(i) + " 10) (> i" + str(i) + " -10)"
+    args_cnst += "(< i" + str(i) + " " + str(ub) + ") (> i" + str(i) + " " + str(lb) + ")"
 
   f = open(synrkt, "w")
   f.write("#lang s-exp rosette\n")
@@ -740,7 +824,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("(synthesize\n")
   f.write("\t#:forall (list " + args + ")\n")
   f.write("\t#:assume (assert (and " + args_cnst + "))\n")
-  f.write("\t#:guarantee (assert (eq? ")
+  f.write("\t#:guarantee (assert (equal? ")
   f.write("(" + main_func + "_t " + args + ") ")
   f.write("(" + main_func + "_s " + args + ")")
   f.write("))))\n");
@@ -813,13 +897,13 @@ def autograde():
       "(>= i" + str(i) + " " + str(lb) + ")" \
       for i in xrange(n)]) \
       + "))\n")
-  f.write("   #:guarantee (assert (eq? (" + main_func + "_t" + args + ") " + \
+  f.write("   #:guarantee (assert (equal? (" + main_func + "_t" + args + ") " + \
       "(" + main_func + "_s" + args + ")))))\n\n")
 
   concrete_args = "".join([" (evaluate i" + str(i) + " ce-model)" for i in xrange(n)])
   f.write("(define sol\n")
   f.write("  (debug [(lambda (x) (or (boolean? x) (number? x)))]\n")
-  f.write("    (assert (eq? (" + main_func + "_t" + concrete_args + ") (" \
+  f.write("    (assert (equal? (" + main_func + "_t" + concrete_args + ") (" \
       + main_func + "_s" + concrete_args + ")))))\n")
   f.write("(define sol-list (remove-duplicates (filter-map sym-origin (core sol))))\n")
   f.write("(define return (map (lambda (item) (list " + \
@@ -881,7 +965,7 @@ if __name__ == '__main__':
   #
   # Generate mutated python program to racket
   #
-  if options.student_py:
+  if options.student_py and options.teacher_py:
     s_py = options.student_py
     synrkt = s_py.strip(".py") + "_synr.rkt"
     offbyone = OffByOne()
@@ -895,6 +979,7 @@ if __name__ == '__main__':
     for i in xrange(0, len(mutator)):
       fix = {}
       fix[bugs[0]] = mutator[i]
+      #fixes.append(copy.deepcopy(fix))
       for j in xrange(0, len(mutator)):
         fix[bugs[1]] = mutator[j]
         fixes.append(copy.deepcopy(fix))

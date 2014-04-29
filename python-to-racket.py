@@ -19,8 +19,8 @@ s_rkt = None
 s_ast = None
 
 main_func = None
-lb = None
-ub = None
+lb = -10
+ub = 10
 
 debug = True
 
@@ -99,13 +99,13 @@ class RacketVisitor(ast.NodeVisitor):
     elif isinstance(op, ast.Div):
       return "quotient" # TODO
     elif isinstance(op, ast.Mod):
-      return "modulo"
+      return "remainder"
     elif isinstance(op, ast.Pow):
       return "expt"
     elif isinstance(op, ast.Eq):
-      return "eq?"
+      return "equal?"
     elif isinstance(op, ast.NotEq):
-      return "(lambda (x y) (not (eq? x y)))"
+      return "(lambda (x y) (not (equal? x y)))"
     elif isinstance(op, ast.Lt):
       return "<"
     elif isinstance(op, ast.LtE):
@@ -792,7 +792,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
     args += "i" + str(i) + " "
 
   for i in xrange(n):
-    args_cnst += "(< i" + str(i) + " 10) (> i" + str(i) + " -10)"
+    args_cnst += "(< i" + str(i) + " " + str(ub) + ") (> i" + str(i) + " " + str(lb) + ")"
 
   f = open(synrkt, "w")
   f.write("#lang s-exp rosette\n")
@@ -824,7 +824,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("(synthesize\n")
   f.write("\t#:forall (list " + args + ")\n")
   f.write("\t#:assume (assert (and " + args_cnst + "))\n")
-  f.write("\t#:guarantee (assert (eq? ")
+  f.write("\t#:guarantee (assert (equal? ")
   f.write("(" + main_func + "_t " + args + ") ")
   f.write("(" + main_func + "_s " + args + ")")
   f.write("))))\n");
@@ -897,13 +897,13 @@ def autograde():
       "(>= i" + str(i) + " " + str(lb) + ")" \
       for i in xrange(n)]) \
       + "))\n")
-  f.write("   #:guarantee (assert (eq? (" + main_func + "_t" + args + ") " + \
+  f.write("   #:guarantee (assert (equal? (" + main_func + "_t" + args + ") " + \
       "(" + main_func + "_s" + args + ")))))\n\n")
 
   concrete_args = "".join([" (evaluate i" + str(i) + " ce-model)" for i in xrange(n)])
   f.write("(define sol\n")
   f.write("  (debug [(lambda (x) (or (boolean? x) (number? x)))]\n")
-  f.write("    (assert (eq? (" + main_func + "_t" + concrete_args + ") (" \
+  f.write("    (assert (equal? (" + main_func + "_t" + concrete_args + ") (" \
       + main_func + "_s" + concrete_args + ")))))\n")
   f.write("(define sol-list (remove-duplicates (filter-map sym-origin (core sol))))\n")
   f.write("(define return (map (lambda (item) (list " + \

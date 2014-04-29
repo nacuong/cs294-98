@@ -4,6 +4,10 @@
 4) parallelization vs combination
 5) individualized error model vs generic error model
 
+cuong:
+- new synthesis
+- generalize # of fixes
+
 ===== python to racket ====
 - quotient or /
 - for, list

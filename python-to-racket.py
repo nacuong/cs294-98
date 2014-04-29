@@ -97,15 +97,15 @@ class RacketVisitor(ast.NodeVisitor):
     elif isinstance(op, ast.Sub):
       return "-"
     elif isinstance(op, ast.Div):
-      return "quotient"
+      return "quotient" # TODO
     elif isinstance(op, ast.Mod):
       return "modulo"
     elif isinstance(op, ast.Pow):
-      return "^"
+      return "expt"
     elif isinstance(op, ast.Eq):
-      return "==" # TODO: confirm this
+      return "eq?"
     elif isinstance(op, ast.NotEq):
-      return "!=" # TODO: confirm this
+      return "(lambda (x y) (not (eq? x y)))"
     elif isinstance(op, ast.Lt):
       return "<"
     elif isinstance(op, ast.LtE):
@@ -286,7 +286,9 @@ class RacketVisitor(ast.NodeVisitor):
         self.visit(value)
         self.indent = self.indent - 1
         self.indent = self.indent - 1
+        self.newline()
       elif field == "body":
+        self.outputln("(begin")
         self.indent_print(field + ":")
         self.indent = self.indent + 1
         for stmt in value:
@@ -295,7 +297,9 @@ class RacketVisitor(ast.NodeVisitor):
           self.visit(stmt)
           self.indent = self.indent - 1
         self.indent = self.indent - 1
+        self.outputln(")")
       elif field == "orelse":
+        self.outputln("(begin")
         self.indent_print(field + ":")
         self.indent = self.indent + 1
         for stmt in value:
@@ -304,10 +308,11 @@ class RacketVisitor(ast.NodeVisitor):
           self.visit(stmt)
           self.indent = self.indent - 1
         self.indent = self.indent - 1
+        self.outputln(")")
       else:
         self.print_field_value(field, value)
 
-    self.newline()
+    self.outputln(")")
 
   """
   A visitor for call expression
@@ -319,26 +324,69 @@ class RacketVisitor(ast.NodeVisitor):
     node.rkt_col_offset = self.rkt_col_offset
 
     # self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
-
-    self.output(" (")
-
+    func = None
+    args = None
+    
     for field, value in ast.iter_fields(node):
       if field == "func":
-        self.indent_print(field + ":")
-        self.indent = self.indent + 1
-        self.indent_print(value.__class__.__name__ + ":")
-        self.visit(value)
-        self.indent = self.indent - 1
+        func = value
       elif field == "args":
-        self.indent_print(field + ":")
+        args = value
+
+    print "func class =", func.__class__
+    if func.__class__.__name__ == "Attribute":
+      # Attribute
+      self.indent_print("Attribute:")
+      self.indent = self.indent + 1
+      self.indent_print("attr: " + func.attr)
+      if func.attr == "append":
+        self.output("(set!")
+
+        self.indent_print("value:")
         self.indent = self.indent + 1
-        for arg in value:
+        self.visit(func.value)
+        self.indent = self.indent - 1
+
+        self.output(" (cons")
+        self.indent_print("args:")
+        self.indent = self.indent + 1
+        for arg in args:
+          self.indent = self.indent + 1
           self.indent_print(arg.__class__.__name__ + ":")
           self.visit(arg)
+          self.indent = self.indent - 1
         self.indent = self.indent - 1
+
+        self.output(" ")
+        self.indent_print("value:")
+        self.indent = self.indent + 1
+        self.visit(func.value)
+        self.indent = self.indent - 1
+
+        self.outputln("))")
       else:
-        self.print_field_value(field, value)
-    self.output(")")
+        raise JSONVisitorException("Unexpected error: Missed case attribute: %s." % func.attr)
+      self.indent = self.indent + 1
+    else:
+      self.output(" (")
+
+      # name
+      self.indent_print("func:")
+      self.indent = self.indent + 1
+      self.visit(func)
+      self.indent = self.indent - 1
+
+      # args
+      self.indent_print("args:")
+      self.indent = self.indent + 1
+      for arg in args:
+        self.indent = self.indent + 1
+        self.indent_print(arg.__class__.__name__ + ":")
+        self.visit(arg)
+        self.indent = self.indent - 1
+      self.indent = self.indent - 1
+
+      self.output(")")
 
   """
   A visitor for binop expression
@@ -495,6 +543,21 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent - 1
         self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
         self._output(name)
+
+  def visit_List(self,node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
+    self.output(" (list")
+    for field, value in ast.iter_fields(node):
+      self.indent = self.indent + 1
+      self.indent_print(field + ":")
+      if field == "elts":
+        for v in value:
+          self.visit(v)
+      self.indent = self.indent - 1
+    self.output(")")
 
   """
   A visitor for while statement
@@ -656,48 +719,6 @@ class RacketVisitor(ast.NodeVisitor):
 
     for field, value in ast.iter_fields(node):
       print "Load: field = ", field, value
-
-  def visit_Attribute(self, node):
-    val = None
-    attr = None
-    ctx = None
-    # associate racket line and column to node
-    node.rkt_lineno = self.rkt_lineno
-    node.rkt_col_offset = self.rkt_col_offset
-
-    print "Attribute", node.__dict__
-    for field, value in ast.iter_fields(node):
-      # print "Attribute: field = ", field, value
-      if field == "value":
-        val = value
-      elif field == "attr":
-        attr = value
-      elif field == "ctx":
-        ctx = value
-
-    # print val, attr, ctx
-    if attr == "append":
-      self.output("(set!")
-      self.indent_print("value :")
-      self.indent = self.indent + 1
-      self.visit(val)
-      self.indent = self.indent - 1
-
-      self.output(" (cons")
-      self.indent_print("ctx :")
-      self.indent = self.indent + 1
-      self.visit(ctx)
-      self.indent = self.indent - 1
-
-      self.indent_print("value :")
-      self.indent = self.indent + 1
-      self.visit(val)
-      self.indent = self.indent - 1
-
-      self.outputln("))")
-    else:
-      raise JSONVisitorException("Unexpected error: Missed case attribute: %s." % attr)
-      
 
   """
   Generic visitor for Python program. Syntax-directed translation to racket.
@@ -951,11 +972,13 @@ if __name__ == '__main__':
     sametype = TrySameType()
 
     bugs = [(5,15), (5,18)]
+    #bugs = [(3,15)]
     mutator = [offbyone, sametype]
     fixes = []
     for i in xrange(0, len(mutator)):
       fix = {}
       fix[bugs[0]] = mutator[i]
+      #fixes.append(copy.deepcopy(fix))
       for j in xrange(0, len(mutator)):
         fix[bugs[1]] = mutator[j]
         fixes.append(copy.deepcopy(fix))

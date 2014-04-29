@@ -7,9 +7,6 @@
 ===== python to racket ====
 - quotient or /
 - for, list
-        
-- if need begins
-  if (begin ...) (begin ...)
 
 - return
   if x = 0:

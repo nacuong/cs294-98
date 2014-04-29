@@ -188,8 +188,6 @@ class MutateVisitor(ast.NodeVisitor):
             raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % item)
       elif isinstance(value, ast.AST):
         self.visit(value)
-      else:
-        raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % value)
 
     return node
 

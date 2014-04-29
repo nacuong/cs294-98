@@ -5,10 +5,9 @@
 5) individualized error model vs generic error model
 
 ===== python to racket ====
+- quotient or /
 - for, list
-- tuple needs let
-  = s[first], s[last] = s[last], s[first]
-
+        
 - if need begins
   if (begin ...) (begin ...)
 

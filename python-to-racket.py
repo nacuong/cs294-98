@@ -97,9 +97,9 @@ class RacketVisitor(ast.NodeVisitor):
     elif isinstance(op, ast.Sub):
       return "-"
     elif isinstance(op, ast.Div):
-      return "/"
+      return "quotient"
     elif isinstance(op, ast.Mod):
-      return "%"
+      return "modulo"
     elif isinstance(op, ast.Pow):
       return "^"
     elif isinstance(op, ast.Eq):
@@ -114,6 +114,8 @@ class RacketVisitor(ast.NodeVisitor):
       return ">"
     elif isinstance(op, ast.GtE):
       return ">="
+    elif isinstance(op, ast.FloorDiv):
+      return "quotient"
     else:
       raise JSONVisitorException("Unexpected error: Missed case: %s." % op)
 
@@ -434,14 +436,23 @@ class RacketVisitor(ast.NodeVisitor):
       self.visit(rhs)
       self.outputln(")")
     elif isinstance(lhs, ast.Tuple):
-      for l,r in zip(lhs.elts, rhs.elts):
-        self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
+      self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
+      index = 0
+      self.outputln("(let (")
+      for r in rhs.elts:
+        self.output("[~temp" + str(index))
+        self.visit(r)
+        self.outputln("]")
+        index = index + 1
+      self.outputln(")")
+      
+      index = 0
+      for l in lhs.elts:
         self.output("(set!")
         self.visit(l)
-        self.id_open(r)
-        self.visit(r)
-        self.id_close(r)
-        self.outputln(")")
+        self.outputln(" ~temp" + str(index) + ")")
+        index = index + 1
+      self.outputln(")")
 
   """
   A visitor for return expression
@@ -637,12 +648,64 @@ class RacketVisitor(ast.NodeVisitor):
 
     return self.generic_visit(node)
 
+  def visit_Load(self,node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+    print "Load", node.__dict__
+
+    for field, value in ast.iter_fields(node):
+      print "Load: field = ", field, value
+
+  def visit_Attribute(self, node):
+    val = None
+    attr = None
+    ctx = None
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
+    print "Attribute", node.__dict__
+    for field, value in ast.iter_fields(node):
+      # print "Attribute: field = ", field, value
+      if field == "value":
+        val = value
+      elif field == "attr":
+        attr = value
+      elif field == "ctx":
+        ctx = value
+
+    # print val, attr, ctx
+    if attr == "append":
+      self.output("(set!")
+      self.indent_print("value :")
+      self.indent = self.indent + 1
+      self.visit(val)
+      self.indent = self.indent - 1
+
+      self.output(" (cons")
+      self.indent_print("ctx :")
+      self.indent = self.indent + 1
+      self.visit(ctx)
+      self.indent = self.indent - 1
+
+      self.indent_print("value :")
+      self.indent = self.indent + 1
+      self.visit(val)
+      self.indent = self.indent - 1
+
+      self.outputln("))")
+    else:
+      raise JSONVisitorException("Unexpected error: Missed case attribute: %s." % attr)
+      
+
   """
   Generic visitor for Python program. Syntax-directed translation to racket.
   Return the racket program and the mapping from (line, col) of python to
   (line, col) of racket program.
   """
   def generic_visit(self, node):
+    print "generic_visit ", node.__class__
     if (not (isinstance(node, ast.AST))):
       raise JSONVisitorException("Unexpected error: Non-ast passed to visit.  Please report to the TAs.")
 
@@ -881,7 +944,7 @@ if __name__ == '__main__':
   #
   # Generate mutated python program to racket
   #
-  if options.student_py:
+  if options.student_py and options.teacher_py:
     s_py = options.student_py
     synrkt = s_py.strip(".py") + "_synr.rkt"
     offbyone = OffByOne()

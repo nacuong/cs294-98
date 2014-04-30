@@ -23,6 +23,34 @@ class MutateVisitor(ast.NodeVisitor):
     else:
       return node
 
+  def visit_AugAssign(self, node):
+    if (node.lineno, node.col_offset) in self.mutator_map:
+      mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+      mutated_node.lineno = node.lineno
+      mutated_node.col_offset = node.col_offset
+      return mutated_node
+    else:
+      target = None
+      op = None
+      val = None
+      for field, value in ast.iter_fields(node):
+        if field == "target":
+          target = value
+        elif field == "op":
+          op = value
+        elif field == "value":
+          val = value
+
+      print target
+      print op
+      print val
+
+      node.target = self.visit(target)
+      node.val = self.visit(val)
+      node.op = op
+
+      return node
+
   """
   A visitor for binop expression
   """
@@ -40,7 +68,7 @@ class MutateVisitor(ast.NodeVisitor):
 
     node.left = self.visit(left)
     node.right = self.visit(right)
-    node.op = self.visit(op)
+    node.op = op
 
     return node
 

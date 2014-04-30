@@ -162,6 +162,7 @@ class RacketVisitor(ast.NodeVisitor):
   """
   def visit_AllNum(self, node):
     self.output(" (n? _n" + str(self._nid) + ") ")
+    self._nid += 1
 
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
@@ -1132,8 +1133,8 @@ if __name__ == '__main__':
     #bugs = [(5,15), (5,18), (7,38)]
     #mutator = [offbyone, sametype, sametype]
     #bugs = [(5,15),(7,38)]
-    bugs = [(4,20),(9,14)] # ComputeDeriv
-    #bugs = [(3,15)] # hw1-4 (hailstone)
+    #bugs = [(4,20),(9,14)] # ComputeDeriv
+    bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
     mutator = [offbyone, sametype]
     fixes = []
     for i in xrange(0, len(mutator)):
@@ -1151,7 +1152,8 @@ if __name__ == '__main__':
         + str(i), fixes[i], queue)))
 
     for i in xrange(0, len(fixes)):
-      workers[i].start()
+      if i == len(fixes) - 1:
+        workers[i].start()
 
     while True:
       if not queue.empty():

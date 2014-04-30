@@ -105,6 +105,15 @@ class SynthesisVisitor(ast.NodeVisitor):
     return node
 
   """
+  A visitor for list
+  """
+  def visit_List(self, node):
+    return node
+
+  def visit_Subscript(self, node):
+    return node
+
+  """
   A visitor for if expression
   """
   def visit_If(self, node):
@@ -222,6 +231,9 @@ class SynthesisVisitor(ast.NodeVisitor):
       if field == "body":
         node.body = [self.visit(stmt) for stmt in value]
 
+    return node
+
+  def visit_Attribute(self, node):
     return node
 
   """

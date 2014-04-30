@@ -426,8 +426,8 @@ class RacketVisitor(ast.NodeVisitor):
     self.indent = self.indent - 1
 
     self._output("(")
-    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (right.lineno, right.col_offset - 1)
-    self._output(self.op_to_string(op))
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (right.lineno, right.col_offset - 1) # TODO: check
+    self.output(self.op_to_string(op))
 
     # process left
     self.indent_print("left:")
@@ -463,35 +463,50 @@ class RacketVisitor(ast.NodeVisitor):
     # associate racket line and column to node
     node.rkt_lineno = self.rkt_lineno
     node.rkt_col_offset = self.rkt_col_offset
+    
+    self.indent_print("Assign:")
+    self.indent = self.indent + 1
 
     for field, value in ast.iter_fields(node):
       if field == "targets":
         lhs = value[0]
-        self.indent_print(field + ":")
-        self.indent = self.indent + 1
-        self.indent_print(value[0].__class__.__name__ + ":")
-        self.indent = self.indent - 1
       elif field == "value":
         rhs = value
-        self.indent_print(field + ":")
-        self.indent = self.indent + 1
-        self.indent_print(value.__class__.__name__ + ":")
-        self.indent = self.indent + 1
-        self.indent = self.indent - 1
-        self.indent = self.indent - 1
       else:
         self.print_field_value(field, value)
         raise JSONVisitorException("Unexpected error: Missed case: %s." % value)
 
-    #print lhs, isinstance(lhs, ast.Name)
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
+
     if isinstance(lhs, ast.Name):
-      self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
       self.output("(set!")
+      self.indent_print("lhs:")
+      self.indent = self.indent + 1
       self.visit(lhs)
+      self.indent = self.indent - 1
+
+      self.indent_print("rhs:")
+      self.indent = self.indent + 1
       self.visit(rhs)
+      self.indent = self.indent - 1
       self.outputln(")")
+    elif isinstance(lhs, ast.Subscript):
+      self.output("(set!")
+      self.indent_print("lhs:")
+      self.indent = self.indent + 1
+      self.visit(lhs.value)
+
+      self.output(" (list-set")
+      self.visit(lhs.value)
+      self.visit(lhs.slice)
+      self.indent = self.indent - 1
+
+      self.indent_print("rhs:")
+      self.indent = self.indent + 1
+      self.visit(rhs)
+      self.indent = self.indent - 1
+      self.output("))")
     elif isinstance(lhs, ast.Tuple):
-      self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
       index = 0
       self.outputln("(let (")
       for r in rhs.elts:
@@ -508,7 +523,60 @@ class RacketVisitor(ast.NodeVisitor):
         self.outputln(" ~temp" + str(index) + ")")
         index = index + 1
       self.outputln(")")
+    else:
+      raise JSONVisitorException("Unexpected error: Missed case Assign lhs: %s." % lha)
 
+    self.indent = self.indent - 1
+
+  def visit_AugAssign(self, node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
+    # TODO: check
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
+    
+    target = None
+    op = None
+    val = None
+    
+    self.indent_print("AugAssign:")
+    self.indent = self.indent + 1
+    for field, value in ast.iter_fields(node):
+      if field == "target":
+        target = value
+      elif field == "op":
+        op = value
+      elif field == "value":
+        val = value
+
+    self.output("(set!")
+
+    self.indent_print("target:")
+    self.indent = self.indent + 1
+    self.visit(target)
+    self.indent = self.indent - 1
+
+    self.output(" (")
+    self.indent_print("op:")
+    self.indent = self.indent + 1
+    self.indent_print(op.__class__.__name__ + ":")
+    self.indent = self.indent - 1
+    self.output(self.op_to_string(op))
+
+    self.indent_print("target:")
+    self.indent = self.indent + 1
+    self.visit(target)
+    self.indent = self.indent - 1
+
+    self.indent_print("target:")
+    self.indent = self.indent + 1
+    self.visit(value)
+    self.indent = self.indent - 1
+
+    self.outputln("))")
+    self.indent = self.indent - 1
+      
   """
   A visitor for return expression
   """
@@ -556,6 +624,7 @@ class RacketVisitor(ast.NodeVisitor):
     node.rkt_lineno = self.rkt_lineno
     node.rkt_col_offset = self.rkt_col_offset
 
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
     self.output(" (list")
     for field, value in ast.iter_fields(node):
       self.indent = self.indent + 1
@@ -565,6 +634,23 @@ class RacketVisitor(ast.NodeVisitor):
           self.visit(v)
       self.indent = self.indent - 1
     self.output(")")
+
+  def visit_Subscript(self,node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+    self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
+    
+    for field, value in ast.iter_fields(node):
+      self.indent = self.indent + 1
+      self.indent_print(field + ":")
+      if field == "value":
+        self.output(" (list-ref")
+        self.visit(value)
+      elif field == "slice":
+        self.visit(value)
+        self.output(")")
+      self.indent = self.indent - 1
 
   """
   A visitor for while statement

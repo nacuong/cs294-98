@@ -34,7 +34,7 @@ class DefineVisitor(ast.NodeVisitor):
             self.visit_Lhs(l)
         else:
           JSONVisitorException("Unexpected error: in visit_Assign Missed case: %s." \
-                                 % lhs.__class__.__name)
+                                 % lhs)
       elif field == "value":
         self.visit(value)
 

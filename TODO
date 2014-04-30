@@ -7,9 +7,12 @@
 cuong:
 - new synthesis
 - generalize # of fixes
+- multIA += -> *=
+- computeDeriv
 
 ===== python to racket ====
 - quotient or /
+- base case
 - for, list
 
 - return

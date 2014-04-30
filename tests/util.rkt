@@ -60,3 +60,23 @@
     ((min a x ...)
      (let ([b (min x ...)])
        (if (< a b) a b)))))
+
+(define-syntax-rule (list-set l i x)
+  (let ([vec (list->vector l)])
+    (vector-set! vec i x)
+    (vector->list vec)))
+
+(define-syntax-rule (len l) (length l))
+
+(define-syntax range
+  (syntax-rules ()
+    ((range y) (range 0 y))
+    ((range x y) (range-func x y))
+    ))
+
+(define/bounded (range-func l u)
+  (if (< l u)
+      (cons l (range-func (add1 l) u))
+      (list)))
+              
+       

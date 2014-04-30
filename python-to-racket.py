@@ -1,6 +1,7 @@
 import ast, sys, json, getopt, subprocess
 import json, copy
 from define_visitor import DefineVisitor
+from return_visitor import ReturnVisitor
 from param_visitor import ParamVisitor
 from print_visitor import PrintVisitor
 from mutate_visitor import MutateVisitor
@@ -299,22 +300,24 @@ class RacketVisitor(ast.NodeVisitor):
         self.outputln("(begin")
         self.indent_print(field + ":")
         self.indent = self.indent + 1
-        for stmt in value:
-          self.indent_print(stmt.__class__.__name__ + ":")
-          self.indent = self.indent + 1
-          self.visit(stmt)
-          self.indent = self.indent - 1
+        self.visit_list(value)
+        # for stmt in value:
+        #   self.indent_print(stmt.__class__.__name__ + ":")
+        #   self.indent = self.indent + 1
+        #   self.visit(stmt)
+        #   self.indent = self.indent - 1
         self.indent = self.indent - 1
         self.outputln(")")
       elif field == "orelse":
         self.outputln("(begin")
         self.indent_print(field + ":")
         self.indent = self.indent + 1
-        for stmt in value:
-          self.indent_print(stmt.__class__.__name__ + ":")
-          self.indent = self.indent + 1
-          self.visit(stmt)
-          self.indent = self.indent - 1
+        self.visit_list(value)
+        # for stmt in value:
+        #   self.indent_print(stmt.__class__.__name__ + ":")
+        #   self.indent = self.indent + 1
+        #   self.visit(stmt)
+        #   self.indent = self.indent - 1
         self.indent = self.indent - 1
         self.outputln(")")
       else:
@@ -592,9 +595,11 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent + 1
         self.indent_print(value.__class__.__name__ + ":")
         self.indent = self.indent + 1
+        self.output("(set! _ret")
         self.id_open(value)
         self.visit(value)
         self.id_close(value)
+        self.outputln(")")
         self.indent = self.indent - 1
         self.indent = self.indent - 1
 
@@ -783,6 +788,7 @@ class RacketVisitor(ast.NodeVisitor):
           self.outputln("(define-symbolic _c0 _c1 _c2 _c3 _c4 _c5 _c6 _c7 _c8 number?)")
           self.outputln("")
 
+        self.outputln("(define _ret `none)")
         for var in node.define:
           if node.define[var] == "var":
             self.outputln("(define " + var + " #f)")
@@ -790,17 +796,18 @@ class RacketVisitor(ast.NodeVisitor):
         body = value
         self.indent_print(field + ":")
         self.indent = self.indent + 1
-        for stmt in body:
-          self.indent_print(stmt.__class__.__name__ + ":")
-          self.indent = self.indent + 1
-          self.visit(stmt)
-          self.indent = self.indent - 1
+        self.visit_list(value)
+        # for stmt in body:
+        #   self.indent_print(stmt.__class__.__name__ + ":")
+        #   self.indent = self.indent + 1
+        #   self.visit(stmt)
+        #   self.indent = self.indent - 1
         self.indent = self.indent - 1
       elif field == "decorator_list":
         decorator_list = value
         self.print_field_value(field, value)
      
-    self.outputln(")")
+    self.outputln("(if (equal? _ret `none) (void) _ret))")
 
     if decorator_list:
       raise JSONVisitorException("Unexpected error: Missed case: decorator_list is not empty.")
@@ -829,15 +836,42 @@ class RacketVisitor(ast.NodeVisitor):
     for field, value in ast.iter_fields(node):
       print "Load: field = ", field, value
 
+  def visit_list(self, node):
+    if len(node) == 0:
+      self.outputln("(void)")
+      return
+
+    count = 0
+    for item in node:
+      self.indent_print(item.__class__.__name__ + ":")
+      self.indent = self.indent + 1
+      if isinstance(item, ast.AST):
+        if "scope" in item.__dict__:
+          count += 1
+          self.outputln("(when (equal? _ret `none)")
+        self.visit(item)
+      else:
+        raise JSONVisitorException("Unexpected error: Missed case: %s." % item)
+      self.indent = self.indent - 1
+
+    for i in xrange(count):
+      self.output(")")
+    self.newline()
+
   """
   Generic visitor for Python program. Syntax-directed translation to racket.
   Return the racket program and the mapping from (line, col) of python to
   (line, col) of racket program.
   """
   def generic_visit(self, node):
-    print "generic_visit ", node.__class__
+    if isinstance(node, list):
+      self.visit_list(node)
+      return
+    elif node.__class__.__name__ == "NoneType":
+      self.output(" (void)")
+      return
     if (not (isinstance(node, ast.AST))):
-      raise JSONVisitorException("Unexpected error: Non-ast passed to visit.  Please report to the TAs.")
+      raise JSONVisitorException("Unexpected error: Non-ast passed to visit.")
 
     # associate racket line and column to node
     node.rkt_lineno = self.rkt_lineno
@@ -848,11 +882,7 @@ class RacketVisitor(ast.NodeVisitor):
       self.indent_print(field + ":")
       self.indent = self.indent + 1
       if (isinstance(value, list)):
-        for item in value:
-          if isinstance(item, ast.AST):
-            self.visit(item)
-          else:
-            raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % item)
+        self.visit_list(value)
       elif isinstance(value, ast.AST):
         self.visit(value)
       else:
@@ -862,6 +892,7 @@ class RacketVisitor(ast.NodeVisitor):
     return (self.racket, self.rkttopy_loc)
 
 def translate_to_racket(my_ast, rkt, debug):
+  ReturnVisitor().visit(my_ast)
   DefineVisitor().visit(my_ast)
   (racket, rkttopy_loc) = RacketVisitor(debug, False, main_func).visit(my_ast)
 

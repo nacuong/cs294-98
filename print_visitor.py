@@ -407,13 +407,16 @@ class PrintVisitor(ast.NodeVisitor):
       raise JSONVisitorException("Unexpected error: Non-ast passed to visit.  Please report to the TAs.")
 
     for field, value in ast.iter_fields(node):
-      # print "field: ", field, " value: ", value
+      #print "field: ", field, " value: ", value
       self.indent_print(field + ":")
       self.indent = self.indent + 1
       if (isinstance(value, list)):
         for item in value:
           if isinstance(item, ast.AST):
+            self.indent_print(item.__class__.__name__ + ":")
+            self.indent = self.indent + 1
             self.visit(item)
+            self.indent = self.indent - 1
           else:
             raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % item)
       elif isinstance(value, ast.AST):

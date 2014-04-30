@@ -1,0 +1,98 @@
+#lang s-exp rosette
+(require "util.rkt")
+(require "../tests/hw2-1-t.rkt")
+
+(define-symbolic i0 number?)
+(configure [bitwidth 32] [loop-bound 20])
+
+(define-syntax-rule (either c a ...)
+	(choose c (list a ...)))
+
+(define (choose c lst)
+	(list-ref lst c))
+
+(define (n? n)
+	(assert (and (< n 10) (>= n -10000)))
+	n)
+(define (n?? nn)
+	(assert (and (< nn 10) (>= nn -10000)))
+	nn)
+(define (square x)
+	(define (v? v)
+		(cond
+			[(= v 0) x]
+	))
+	(define (v?? vv)
+		(cond
+			[(= vv 0) x]
+	))
+	(define (?? vn v n)
+		(if vn (v?? v) (n?? n)))
+
+(define-symbolic _vn0 _vn1 _vn2 _vn3 _vn4 _vn5 _vn6 _vn7 _vn8 boolean?)
+(define-symbolic _vv0 _vv1 _vv2 _vv3 _vv4 _vv5 _vv6 _vv7 _vv8 number?)
+(define-symbolic _nn0 _nn1 _nn2 _nn3 _nn4 _nn5 _nn6 _nn7 _nn8 number?)
+(define-symbolic _n0 _n1 _n2 _n3 _n4 _n5 _n6 _n7 _n8 number?)
+(define-symbolic _v0 _v1 _v2 _v3 _v4 _v5 _v6 _v7 _v8 number?)
+
+(define-symbolic _c0 _c1 _c2 _c3 _c4 _c5 _c6 _c7 _c8 number?)
+
+ ( * x x))
+
+(define (product_s n)
+	(define (v? v)
+		(cond
+			[(= v 0) k]
+			[(= v 1) total]
+			[(= v 2) n]
+	))
+	(define (v?? vv)
+		(cond
+			[(= vv 0) k]
+			[(= vv 1) total]
+			[(= vv 2) n]
+	))
+	(define (?? vn v n)
+		(if vn (v?? v) (n?? n)))
+
+(define-symbolic _vn0 _vn1 _vn2 _vn3 _vn4 _vn5 _vn6 _vn7 _vn8 boolean?)
+(define-symbolic _vv0 _vv1 _vv2 _vv3 _vv4 _vv5 _vv6 _vv7 _vv8 number?)
+(define-symbolic _nn0 _nn1 _nn2 _nn3 _nn4 _nn5 _nn6 _nn7 _nn8 number?)
+(define-symbolic _n0 _n1 _n2 _n3 _n4 _n5 _n6 _n7 _n8 number?)
+(define-symbolic _v0 _v1 _v2 _v3 _v4 _v5 _v6 _v7 _v8 number?)
+
+(define-symbolic _c0 _c1 _c2 _c3 _c4 _c5 _c6 _c7 _c8 number?)
+
+(define k #f)
+(define total #f)
+(let (
+[~temp0 (either _c0 ( + 0 1) ( - 0 1))
+]
+[~temp1 1]
+)
+(set! total ~temp0)
+(set! k ~temp1)
+)
+(while  ( <= k n)
+(let (
+[~temp0 ( * ( square k) total)]
+[~temp1 ( + (v? _v0)  1)]
+)
+(set! total ~temp0)
+(set! k ~temp1)
+)
+)
+ total)
+(define model
+(synthesize
+	#:forall (list i0 )
+	#:assume (assert (and (< i0 10) (> i0 -10000)))
+	#:guarantee (assert (equal? (product_t i0 ) (product_s i0 )))))
+
+(define solution (solution->list model))
+(for-each (lambda (sol)
+	(define val (cdr sol))
+	(define sym (sym-name (car sol)))
+	(define symtype (syntax->datum sym))
+	(printf "~a:~a\n" symtype val))
+	 solution)

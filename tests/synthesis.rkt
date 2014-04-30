@@ -64,3 +64,11 @@
   #:guarantee (assert (equal? (f i0 i1) (g i0 i1)))))
 
 (pretty-display (solution->list model))
+(define solution (solution->list model))
+(for-each (lambda (sol)
+	(define val (cdr sol))
+	(define sym (sym-name (car sol)))
+	(define symtype (syntax->datum (car sym)))
+	(define symid (cdr sym))
+	(printf "~a:~a:~a\n" symtype symid val))
+	 solution)

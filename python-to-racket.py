@@ -35,6 +35,10 @@ class RacketVisitor(ast.NodeVisitor):
   func_node = None
   rkt_col_offset = 1
   rkttopy_loc = {}
+  _vid = 0
+  _nid = 0
+  _vnid = 0
+  _cid = 0
 
   def __init__(self, debug, synthesis, main):
     self.debug = debug
@@ -124,7 +128,8 @@ class RacketVisitor(ast.NodeVisitor):
   track line and column number.
   """
   def visit_AllNumVar(self, node):
-    self.output(" (??) ")
+    self.output(" (?? _vn" + str(self._vnid) + " _vv" + str(self._vnid) + " _nn" + str(self._vnid) + " ) ")
+    self._vnid += 1
 
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
@@ -139,7 +144,8 @@ class RacketVisitor(ast.NodeVisitor):
   track line and column number.
   """
   def visit_AllVar(self, node):
-    self.output(" (v?) ")
+    self.output(" (v? _v" + str(self._vid) + ") ")
+    self._vid += 1
 
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
@@ -154,7 +160,7 @@ class RacketVisitor(ast.NodeVisitor):
   track line and column number.
   """
   def visit_AllNum(self, node):
-    self.output(" (n?) ")
+    self.output(" (n? _n" + str(self._nid) + ") ")
 
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
@@ -170,7 +176,8 @@ class RacketVisitor(ast.NodeVisitor):
 
   """
   def visit_Either(self, node):
-    self.output(" (either")
+    self.output(" (either _c" + str(self._cid))
+    self._cid += 1
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
 
@@ -620,6 +627,10 @@ class RacketVisitor(ast.NodeVisitor):
     body = None
     decorator_list = None
     self.func_node = node
+    self._vnid = 0 
+    self._vid = 0
+    self._nid = 0
+    self._cid = 0
 
     # associate racket line and column to node
     node.rkt_lineno = self.rkt_lineno
@@ -650,8 +661,7 @@ class RacketVisitor(ast.NodeVisitor):
         self.outputln(")")
         if self.synthesis:
           # all var
-          self.outputln("\t(define (v?)")
-          self.outputln("\t\t(define-symbolic* v number?)") 
+          self.outputln("\t(define (v? v)")
           self.outputln("\t\t(cond")
           count = 0
           for var in node.define:
@@ -660,8 +670,7 @@ class RacketVisitor(ast.NodeVisitor):
           self.outputln("\t))")
 
           # all var num
-          self.outputln("\t(define (v??)")
-          self.outputln("\t\t(define-symbolic* vv number?)") 
+          self.outputln("\t(define (v?? vv)")
           self.outputln("\t\t(cond")
           count = 0
           for var in node.define:
@@ -670,9 +679,18 @@ class RacketVisitor(ast.NodeVisitor):
           self.outputln("\t))")
 
           # all var num
-          self.outputln("\t(define (??)")
-          self.outputln("\t\t(define-symbolic* is-var boolean?)")
-          self.outputln("\t\t(if is-var (v??) (n??)))\n")
+          self.outputln("\t(define (?? vn v n)")
+          self.outputln("\t\t(if vn (v?? v) (n?? n)))\n")
+
+          # allvarnum and either
+          self.outputln("(define-symbolic _vn0 _vn1 _vn2 _vn3 _vn4 _vn5 _vn6 _vn7 _vn8 boolean?)")
+          self.outputln("(define-symbolic _vv0 _vv1 _vv2 _vv3 _vv4 _vv5 _vv6 _vv7 _vv8 number?)")
+          self.outputln("(define-symbolic _nn0 _nn1 _nn2 _nn3 _nn4 _nn5 _nn6 _nn7 _nn8 number?)")
+          self.outputln("(define-symbolic _n0 _n1 _n2 _n3 _n4 _n5 _n6 _n7 _n8 number?)")
+          self.outputln("(define-symbolic _v0 _v1 _v2 _v3 _v4 _v5 _v6 _v7 _v8 number?)")
+          self.outputln("")
+          self.outputln("(define-symbolic _c0 _c1 _c2 _c3 _c4 _c5 _c6 _c7 _c8 number?)")
+          self.outputln("")
 
         for var in node.define:
           if node.define[var] == "var":
@@ -803,23 +821,28 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("number?)\n")
   f.write("(configure [bitwidth 32] [loop-bound 20])\n")
   f.write("\n")
-  f.write("(define-syntax-rule (either a ...)\n")
-  f.write("\t(choose (list a ...)))\n")
+  f.write("(define-syntax-rule (either c a ...)\n")
+  f.write("\t(choose c (list a ...)))\n")
   f.write("\n")
-  f.write("(define (choose lst)\n")
-  f.write("\t(define-symbolic* choice number?)\n")
-  f.write("\t(list-ref lst choice))\n")
+  f.write("(define (choose c lst)\n")
+  f.write("\t(list-ref lst c))\n")
   f.write("\n")
-  f.write("(define (n?)\n")
-  f.write("\t(define-symbolic* n number?)\n")
-  f.write("\t(assert (and (< n 10) (>= n -10)))\n")
-  f.write("\tn)\n");
+
+  # AllNum 
+  f.write("(define (n? n)\n")
+  f.write("\t(assert (and (< n " + str(ub) + ") (>= n " + str(lb) + ")))\n")
+  f.write("\tn)")
   f.write("\n")
-  f.write("(define (n??)\n")
-  f.write("\t(define-symbolic* nn number?)\n")
-  f.write("\t(assert (and (< nn 10) (>= nn -10)))\n")
-  f.write("\tnn)\n")
+
+  #AllVarNum
+  f.write("(define (n?? nn)\n")
+  f.write("\t(assert (and (< nn " + str(ub) + ") (>= nn " + str(lb) + ")))\n") 
+  f.write("\tnn)")
+
+  #The program
   f.write(racket)
+
+  #Call synthesizer
   f.write("(define model\n")
   f.write("(synthesize\n")
   f.write("\t#:forall (list " + args + ")\n")
@@ -833,9 +856,8 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("(for-each (lambda (sol)\n")
   f.write("\t(define val (cdr sol))\n")
   f.write("\t(define sym (sym-name (car sol)))\n")
-  f.write("\t(define symtype (syntax->datum (car sym)))\n")
-  f.write("\t(define symid (cdr sym))\n")
-  f.write("\t(printf \"~a:~a:~a\\n\" symtype symid val))\n")
+  f.write("\t(define symtype (syntax->datum sym))\n")
+  f.write("\t(printf \"~a:~a\\n\" symtype val))\n")
   f.write("\t solution)\n")
   f.close()
 
@@ -845,19 +867,28 @@ def run_synthesizer(ast, synrkt, fix, queue):
   mutated_ast = generate_synthesizer(ast, synrkt, fix)
 
   either = {}
+  allnumvarbool = {}
+  allnumvarnum = {} 
+  allnumvarvar = {}
   allnum = {}
   allvar = {}
-  synr_result = subprocess.check_output(["racket", synrkt])
+  synr_result = subprocess.check_output(["racket", synrkt], shell=False)
 
   if synr_result:
     for line in synr_result.split('\n'): 
       res = line.split(':')
-      if res[0] == "choice":
-        either[int(res[1])] = int(res[2])
-      elif res[0] == "n":
-        allnum[int(res[1])] = int(res[2])
-      elif res[0] == "v":
-        allvar[int(res[1])] = int(res[2])
+      if res[0].startswith("_vn"):
+        allnumvarbool[int(res[0].strip("_vn"))] = int(res[1])
+      elif res[0].startswith("_vv"):
+        allnumvarvar[int(res[0].strip("_vv"))] = int(res[1])
+      elif res[0].startswith("_nn"):
+        allnumvarnum[int(res[0].strip("_nn"))] = int(res[1])
+      elif res[0].startswith("_c"):
+        either[int(res[0].strip("_c"))] = int(res[1])
+      elif res[0].startswith("_n"):
+        allnum[int(res[0].strip("_n"))] = int(res[1])
+      elif res[0].startswith("_v"):
+        allvar[int(res[0].strip("_v"))] = int(res[1])
 
     #if debug:
       #print either

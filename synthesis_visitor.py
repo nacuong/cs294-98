@@ -44,6 +44,8 @@ class SynthesisVisitor(ast.NodeVisitor):
   A visitor for all var
   """
   def visit_AllVar(self, node):
+    print self.allvars
+    print node.id
     if node.id in self.var_map:
       fix = ast.Name(self.allvars[node.id], ast.Load)
       fix.lineno = node.lineno
@@ -212,7 +214,10 @@ class SynthesisVisitor(ast.NodeVisitor):
   A visitor for function definition.
   """
   def visit_FunctionDef(self, node):
-    self.allvars = node.define
+    self.allvars = []
+    for name in node.define:
+      self.allvars.append(name)
+
     for field, value in ast.iter_fields(node):
       if field == "body":
         node.body = [self.visit(stmt) for stmt in value]

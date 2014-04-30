@@ -160,7 +160,7 @@ class SourceVisitor(ast.NodeVisitor):
   def visit_Name(self, node):
     for field, value in ast.iter_fields(node):
       if field == "id":
-        return name
+        return value
 
   """
   Generic visitor for Python program. 

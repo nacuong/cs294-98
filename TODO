@@ -1,19 +1,23 @@
-1) map synthesis result back to python
-2) how to mutate programs
-3) ask emina about list: rishabh-list2
-4) parallelization vs combination
-5) individualized error model vs generic error model
+For poster
+1) performance: parallelization vs combination
+2) demo: synthesize, counterexample, highlight
+3) compare with rishabh's tool (when his doesn't work)
 
 cuong:
-- new synthesis
+- # of symbolic variables = # of holes
 - generalize # of fixes
 - multIA += -> *=
-- computeDeriv
+- test preserveMutator
+- add generic mutator
+
+mangpo:
+- return
+- for
 
 ===== python to racket ====
 - quotient or /
 - base case
-- for, list
+- for
 
 - return
   if x = 0:
@@ -32,8 +36,6 @@ cuong:
     (set! x (+ x 1))
     (set! ret x))
   ret)
-  
-- -= += *= /=
 
 ======================================
 EXAMPLE for synthesis

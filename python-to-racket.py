@@ -541,7 +541,7 @@ class RacketVisitor(ast.NodeVisitor):
     op = None
     val = None
     
-    self.indent_print("AugAssign:")
+    self.indent_print("AugAssign: (line,col) = (" + str(node.lineno) + "," + str (node.col_offset) + ")")
     self.indent = self.indent + 1
     for field, value in ast.iter_fields(node):
       if field == "target":
@@ -570,9 +570,9 @@ class RacketVisitor(ast.NodeVisitor):
     self.visit(target)
     self.indent = self.indent - 1
 
-    self.indent_print("target:")
+    self.indent_print("value:")
     self.indent = self.indent + 1
-    self.visit(value)
+    self.visit(val)
     self.indent = self.indent - 1
 
     self.outputln("))")
@@ -1133,6 +1133,7 @@ if __name__ == '__main__':
     #mutator = [offbyone, sametype, sametype]
     #bugs = [(5,15),(7,38)]
     bugs = [(4,20),(9,14)] # ComputeDeriv
+    #bugs = [(3,15)] # hw1-4 (hailstone)
     mutator = [offbyone, sametype]
     fixes = []
     for i in xrange(0, len(mutator)):

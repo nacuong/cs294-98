@@ -21,6 +21,7 @@ s_ast = None
 main_func = None
 lb = -10
 ub = 10
+array = None
 
 debug = True
 
@@ -607,6 +608,10 @@ class RacketVisitor(ast.NodeVisitor):
     node.rkt_lineno = self.rkt_lineno
     node.rkt_col_offset = self.rkt_col_offset
 
+    self.indent = self.indent + 1
+    self.indent_print("(line,col): (" + str(node.lineno) + "," + str(node.col_offset) + ")")
+    self.indent = self.indent - 1
+
     for field, value in ast.iter_fields(node):
       if field == "id":
         if "racket" in node.__dict__:
@@ -879,6 +884,42 @@ def translate_to_racket(my_ast, rkt, debug):
 
   return rkttopy_loc
 
+def get_syms(n):
+  syms = ""
+  for i in xrange(n):
+    if i in array:
+      syms += "l" + str(i) + " "
+      for j in xrange(10):
+        syms += "i" + str(i) + "_" + str(j) + " "
+    else:
+      syms += "i" + str(i) + " "
+
+  return syms
+
+def get_args(n):
+  args = ""
+  for i in xrange(n):
+    if i in array:
+      args += "(take (list "
+      for j in xrange(10):
+        args += "i" + str(i) + "_" + str(j) + " "
+      args += ") l" + str(i) + ")"
+    else:
+      args += "i" + str(i) + " "
+  return args
+
+def get_args_cnst(n):
+  args_cnst = ""
+  for i in xrange(n):
+    if i in array:
+      for j in xrange(10):
+        args_cnst += "(< i" + str(i) + "_" + str(j) + " " + str(ub) + ") "
+        args_cnst += "(> i" + str(i) + "_" + str(j) + " " + str(lb) + ") "
+      args_cnst += "(<= l" + str(i) + " 10) (>= l" + str(i) + " 0) "
+    else:
+      args_cnst += "(< i" + str(i) + " " + str(ub) + ") (> i" + str(i) + " " + str(lb) + ") "
+  return args_cnst
+
 def generate_synthesizer(my_ast, synrkt, mutation): 
   clone_ast = copy.deepcopy(my_ast)
   MutateVisitor(mutation).visit(clone_ast)
@@ -889,21 +930,16 @@ def generate_synthesizer(my_ast, synrkt, mutation):
 
   s_args = ParamVisitor(main_func).visit(s_ast)
   n = len(s_args)
-  args = ""
-  args_cnst = ""
-
-  for i in xrange(n):
-    args += "i" + str(i) + " "
-
-  for i in xrange(n):
-    args_cnst += "(< i" + str(i) + " " + str(ub) + ") (> i" + str(i) + " " + str(lb) + ")"
+  syms = get_syms(n)
+  args = get_args(n)
+  args_cnst = get_args_cnst(n)
 
   f = open(synrkt, "w")
   f.write("#lang s-exp rosette\n")
   f.write("(require \"util.rkt\")\n")
   f.write("(require \"../" + t_rkt + "\")\n\n")
   f.write("(define-symbolic ")
-  f.write(args)
+  f.write(syms)
   f.write("number?)\n")
   f.write("(configure [bitwidth 32] [loop-bound 20])\n")
   f.write("\n")
@@ -936,7 +972,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("\t#:guarantee (assert (equal? ")
   f.write("(" + main_func + "_t " + args + ") ")
   f.write("(" + main_func + "_s " + args + ")")
-  f.write("))))\n");
+  f.write("))))\n")
   f.write("\n")
   f.write("(define solution (solution->list model))\n")
   f.write("(for-each (lambda (sol)\n")
@@ -998,6 +1034,9 @@ def autograde():
     exit()
 
   n = len(t_args)
+  syms = get_syms(n)
+  args = get_args(n)
+  args_cnst = get_args_cnst(n)
 
   f = open("grade.rkt", "w")
   f.write("#lang s-exp rosette\n")
@@ -1005,17 +1044,14 @@ def autograde():
   f.write("(require json rosette/lang/debug rosette/lib/tools/render)\n\n")
   f.write("(configure [bitwidth 32] [loop-bound 10])\n")
 
-  args = "".join([" i" + str(i) for i in xrange(n)])
-  f.write("(define-symbolic" + args + " number?)\n")
+  f.write("(define-symbolic" + syms + " number?)\n")
   f.write("(define ce-model\n")
   f.write("  (verify\n")
-  f.write("   #:assume (assert (and " \
-      + " ".join(["(< i" + str(i) + " " + str(ub) + ") " + \
-      "(>= i" + str(i) + " " + str(lb) + ")" \
-      for i in xrange(n)]) \
-      + "))\n")
-  f.write("   #:guarantee (assert (equal? (" + main_func + "_t" + args + ") " + \
-      "(" + main_func + "_s" + args + ")))))\n\n")
+  f.write("\t#:assume (assert (and " + args_cnst + "))\n")
+  f.write("\t#:guarantee (assert (equal? ")
+  f.write("(" + main_func + "_t " + args + ") ")
+  f.write("(" + main_func + "_s " + args + ")")
+  f.write("))))\n\n")
 
   concrete_args = "".join([" (evaluate i" + str(i) + " ce-model)" for i in xrange(n)])
   f.write("(define sol\n")
@@ -1038,6 +1074,7 @@ if __name__ == '__main__':
   parser.add_option("-m", "--main")
   parser.add_option("-l", "--lower-bound", default=-10000)
   parser.add_option("-u", "--upper-bound", default=10000)
+  parser.add_option("-a", "--array", default="")
   (options, args) = parser.parse_args()
 
   main_func = options.main
@@ -1058,6 +1095,10 @@ if __name__ == '__main__':
   if t_py and s_py:
     lb = options.lower_bound
     ub = options.upper_bound
+    array = options.array.split(',')
+    if len(array) == 1 and array[0] == '':
+      array = []
+    array = set([int(x) for x in array])
     autograde()
 
 #  grade_result = subprocess.check_output(["racket", "grade.rkt"])
@@ -1090,7 +1131,8 @@ if __name__ == '__main__':
 
     #bugs = [(5,15), (5,18), (7,38)]
     #mutator = [offbyone, sametype, sametype]
-    bugs = [(5,15),(7,38)]
+    #bugs = [(5,15),(7,38)]
+    bugs = [(4,20),(9,14)] # ComputeDeriv
     mutator = [offbyone, sametype]
     fixes = []
     for i in xrange(0, len(mutator)):

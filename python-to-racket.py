@@ -6,7 +6,7 @@ from param_visitor import ParamVisitor
 from print_visitor import PrintVisitor
 from mutate_visitor import MutateVisitor
 from source_visitor import SourceVisitor
-from mutator import OffByOne, TrySameType
+from mutator import OffByOne, TrySameType, PreserveStructure, PreserveStructureAndOp
 from synthesis_visitor import SynthesisVisitor
 from optparse import OptionParser
 from multiprocessing import Process, Queue
@@ -179,16 +179,28 @@ class RacketVisitor(ast.NodeVisitor):
 
   """
   def visit_Either(self, node):
-    self.output(" (either _c" + str(self._cid))
+    self.output(" (either _c" + str(self._cid) + " ")
     self._cid += 1
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
+    cache_vid = self._vid
+    cache_nid = self._nid
+    cache_vnid = self._vnid
+    max_vid, max_nid, max_vnid = 0, 0, 0
 
     for field, value in ast.iter_fields(node):
       if field == "choices":
         self.indent_print(field + ":")
         self.indent = self.indent + 1
         for choice in value:
+          max_vid = max(max_vid, self._vid)
+          max_nid = max(max_nid, self._nid)
+          max_vnid = max(max_vnid, self._vnid)
+
+          self._vid = cache_vid
+          self._nid = cache_nid
+          self._vnid = cache_vnid
+
           self.indent_print(choice.__class__.__name__ + ":")
           self.indent = self.indent + 1
           self.visit(choice)
@@ -196,6 +208,10 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent - 1 
       else:
         self.print_field_value(field, value)
+
+    self._vid = max_vid
+    self._nid = max_nid
+    self._vnid = max_vnid
 
     self.indent = self.indent - 1
     self.outputln(")")
@@ -210,9 +226,7 @@ class RacketVisitor(ast.NodeVisitor):
 
     for field, value in ast.iter_fields(node):
       if field == "n":
-        self.indent = self.indent + 1
         self.indent_print(field + ":" + str(value))
-        self.indent = self.indent - 1
 
         self.rkttopy_loc[(self.rkt_lineno, self.rkt_col_offset)] = (node.lineno, node.col_offset)
         self._output(str(value))
@@ -698,7 +712,16 @@ class RacketVisitor(ast.NodeVisitor):
       if field == "target":
         self.visit(value)
       elif field == "iter":
-        self.visit(value)
+        if isinstance(value,ast.Call) and value.func.id == "range":
+          self.indent_print("range:")
+          self.indent = self.indent + 1
+          self.output(" (in-range")
+          for arg in value.args:
+            self.visit(arg)
+          self.indent = self.indent - 1
+          self.output(")")
+        else:
+          self.visit(value)
         self.outputln("])")
       elif field == "body":
         self.visit_list(value)
@@ -807,13 +830,13 @@ class RacketVisitor(ast.NodeVisitor):
           self.outputln("\t\t(if vn (v?? v) (n?? n)))\n")
 
           # allvarnum and either
-          self.outputln("(define-symbolic _vn0 _vn1 _vn2 _vn3 _vn4 _vn5 _vn6 _vn7 _vn8 boolean?)")
-          self.outputln("(define-symbolic _vv0 _vv1 _vv2 _vv3 _vv4 _vv5 _vv6 _vv7 _vv8 number?)")
-          self.outputln("(define-symbolic _nn0 _nn1 _nn2 _nn3 _nn4 _nn5 _nn6 _nn7 _nn8 number?)")
-          self.outputln("(define-symbolic _n0 _n1 _n2 _n3 _n4 _n5 _n6 _n7 _n8 number?)")
-          self.outputln("(define-symbolic _v0 _v1 _v2 _v3 _v4 _v5 _v6 _v7 _v8 number?)")
+          self.outputln("(define-symbolic _vn0 _vn1 _vn2 _vn3 _vn4 _vn5 _vn6 _vn7 _vn8 _vn9 _vn10 boolean?)")
+          self.outputln("(define-symbolic _vv0 _vv1 _vv2 _vv3 _vv4 _vv5 _vv6 _vv7 _vv8 _vv9 _vv10 number?)")
+          self.outputln("(define-symbolic _nn0 _nn1 _nn2 _nn3 _nn4 _nn5 _nn6 _nn7 _nn8 _nn9 _nn10 number?)")
+          self.outputln("(define-symbolic _n0 _n1 _n2 _n3 _n4 _n5 _n6 _n7 _n8 _n9 _n10 number?)")
+          self.outputln("(define-symbolic _v0 _v1 _v2 _v3 _v4 _v5 _v6 _v7 _v8 _v9 _v10 number?)")
           self.outputln("")
-          self.outputln("(define-symbolic _c0 _c1 _c2 _c3 _c4 _c5 _c6 _c7 _c8 number?)")
+          self.outputln("(define-symbolic _c0 _c1 _c2 _c3 _c4 _c5 _c6 _c7 _c8 _c9 _c10 number?)")
           self.outputln("")
 
         self.outputln("(define _ret `none)")
@@ -1026,7 +1049,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   #Call synthesizer
   f.write("(define model\n")
   f.write("(synthesize\n")
-  f.write("\t#:forall (list " + args + ")\n")
+  f.write("\t#:forall (list " + syms + ")\n")
   f.write("\t#:assume (assert (and " + args_cnst + "))\n")
   f.write("\t#:guarantee (assert (equal? ")
   f.write("(" + main_func + "_t " + args + ") ")
@@ -1124,6 +1147,27 @@ def autograde():
       "(filter syntax-line sol-list)))\n")
   f.write("(write-json return)")
 
+def generateAllFixes(bugs, mutators): 
+  fixes = []
+  bug = bugs[-1]
+
+  if len(bugs) == 1:
+    for mutator in mutators:
+      fix = {}
+      fix[bug] = mutator
+      fixes.append(fix)
+
+    return fixes
+  else:
+    del bugs[-1]
+    sub_fixes = generateAllFixes(bugs, mutators)
+    for sub_fix in sub_fixes:
+      for mutator in mutators:
+        fix = copy.deepcopy(sub_fix)
+        fix[bug] = mutator
+        fixes.append(fix)
+
+    return fixes
 
 if __name__ == '__main__':
 
@@ -1187,31 +1231,27 @@ if __name__ == '__main__':
     synrkt = s_py.strip(".py") + "_synr.rkt"
     offbyone = OffByOne()
     sametype = TrySameType()
+    samestruct = PreserveStructure()
 
     #bugs = [(5,15), (5,18), (7,38)]
     #mutator = [offbyone, sametype, sametype]
     #bugs = [(5,15),(7,38)]
     bugs = [(4,20),(9,14)] # ComputeDeriv
+    mutator = [offbyone, sametype] # ComputeDeriv
     #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
-    mutator = [offbyone, sametype]
-    fixes = []
-    for i in xrange(0, len(mutator)):
-      fix = {}
-      fix[bugs[0]] = mutator[i]
-      #fixes.append(copy.deepcopy(fix))
-      for j in xrange(0, len(mutator)):
-        fix[bugs[1]] = mutator[j]
-        fixes.append(copy.deepcopy(fix))
-
+    #mutator = [offbyone, sametype] #h1-4 (hailstone)
+    #bugs = [(3,13), (5, 8)] # mulIA 
+    #mutator = [sametype, samestruct]
+    fixes = generateAllFixes(bugs, mutator)
     queue = Queue()
     workers = []
+
     for i in xrange(0, len(fixes)):
       workers.append(Process(target=run_synthesizer, args=(s_ast, synrkt + "_"
         + str(i), fixes[i], queue)))
 
     for i in xrange(0, len(fixes)):
-      if i == len(fixes) - 1:
-        workers[i].start()
+      workers[i].start()
 
     while True:
       if not queue.empty():

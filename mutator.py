@@ -2,6 +2,42 @@ import ast, copy
 from synthesis_ast import Either, AllNum, AllVar, AllNumVar
 
 class PreserveStructure(ast.NodeVisitor):
+  def visit_UnaryOp(self, node):
+    op = None
+    operand = None
+    for field, value in ast.iter_fields(node):
+      if field == "operand":
+        operand = value
+      elif field == "op":
+        op = value
+
+    invert = ast.UnaryOp(ast.Invert, self.visit(operand), lineno = 0, col_offset = 0)
+    nott = ast.UnaryOp(ast.Not, self.visit(operand), lineno = 0, col_offset = 0)
+    uadd = ast.UnaryOp(ast.UAdd, self.visit(operand), lineno = 0, col_offset = 0)
+    usub = ast.UnaryOp(ast.USub, self.visit(operand), lineno = 0, col_offset = 0)
+
+    return Either([invert,nott,uadd,usub])
+
+  def visit_AugAssign(self, node):
+    target = None
+    op = None
+    val = None
+    for field, value in ast.iter_fields(node):
+      if field == "target":
+        target = value
+      elif field == "op":
+        op = value
+      elif field == "value":
+        val = value
+
+
+    add = ast.AugAssign(target, ast.Add(), self.visit(val), lineno=0, col_offset=0)
+    sub = ast.AugAssign(target, ast.Sub(), self.visit(val), lineno = 0, col_offset = 0)
+    mult = ast.AugAssign(target, ast.Mult(), self.visit(val), lineno = 0, col_offset = 0)
+    div = ast.AugAssign(target, ast.Div(), self.visit(val), lineno = 0, col_offset = 0)
+
+    return Either([add,sub,mult,div])
+
   def visit_BinOp(self, node):
     left = None
     op = None
@@ -14,14 +50,10 @@ class PreserveStructure(ast.NodeVisitor):
       elif field == "right":
         right = value
 
-    add = ast.BinOp(self.visit(left), ast.Add(), self.visit(right), lineno = 0,
-        col_offset = 0)
-    sub = ast.BinOp(self.visit(left), ast.Sub(), self.visit(right), lineno = 0,
-        col_offset = 0)
-    mult = ast.BinOp(self.visit(left), ast.Mult(), self.visit(right), lineno = 0,
-        col_offset = 0)
-    div = ast.BinOp(self.visit(left), ast.Div(), self.visit(right), lineno = 0,
-        col_offset = 0)
+    add = ast.BinOp(self.visit(left), ast.Add(), self.visit(right), lineno = 0, col_offset = 0)
+    sub = ast.BinOp(self.visit(left), ast.Sub(), self.visit(right), lineno = 0, col_offset = 0)
+    mult = ast.BinOp(self.visit(left), ast.Mult(), self.visit(right), lineno = 0, col_offset = 0)
+    div = ast.BinOp(self.visit(left), ast.Div(), self.visit(right), lineno = 0, col_offset = 0)
 
     return Either([add,sub,mult,div])
 
@@ -50,8 +82,8 @@ class PreserveStructureAndOp(ast.NodeVisitor):
     return ast.BinOp(self.visit(left), op, self.visit(right), lineno = 0,
         col_offset = 0)
 
-  def visit_Num(self, node):
-    return AllNum()
+    def visit_Num(self, node):
+      return AllNum()
 
   def visit_Name(self, node):
     return AllVar()

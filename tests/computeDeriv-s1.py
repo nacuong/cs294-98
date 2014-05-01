@@ -4,7 +4,7 @@ def computeDeriv(poly):
     deriv = range(1,length)
 
     if len(poly) == 1:
-           deriv = [0.0]
+           deriv = [0]
     else:      
         while i >= 0:
             new = poly[i] * i

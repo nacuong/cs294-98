@@ -23,7 +23,7 @@ main_func = None
 lb = -10
 ub = 10
 array = None
-array_len = 8
+array_len = 4
 
 debug = True
 
@@ -1019,8 +1019,10 @@ def generate_synthesizer(my_ast, synrkt, mutation):
 
   f = open(synrkt, "w")
   f.write("#lang s-exp rosette\n")
+  f.write("(require rosette/solver/z3/z3)\n")
   f.write("(require \"util.rkt\")\n")
   f.write("(require \"../" + t_rkt + "\")\n\n")
+  f.write("(current-solver (new z3%))\n")
   f.write("(define-symbolic ")
   f.write(syms)
   f.write("number?)\n")
@@ -1240,11 +1242,13 @@ if __name__ == '__main__':
     #bugs = [(5,15), (5,18), (7,38)]
     #mutator = [offbyone, sametype, sametype]
     #bugs = [(5,15),(7,38)]
+
     #bugs = [(4,20),(9,14)] # ComputeDeriv
     #mutator = [offbyone, sametype] # ComputeDeriv
     #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
     #mutator = [offbyone, sametype] #h1-4 (hailstone)
-    bugs = [(6,23),(7,31)] # EvaluatePoly
+    #bugs = [(6,19)] # EvaluatePoly s2
+    bugs = [(6,23)] # EvaluatePoly s4
     mutator = [offbyone, sametype] # EvaluatePoly
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]

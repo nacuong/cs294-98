@@ -26,3 +26,21 @@ hw1-4 (hailstone)
 rishabh-list
 http://sketch1.csail.mit.edu/python-autofeedback/new-encoding/
 
+
+======================================
+ComputeDeriv
+1: ok
+2: base case
+3: list comprehension
+4: base case
+EvaluatePoly
+1: no return, break
+2: ok
+3: ok with > => !=
+4: ok
+OddTuples
+1: ok with range(l) => range(len(l))
+2: ok
+MultIA
+1: ok
+2: base case, add statement

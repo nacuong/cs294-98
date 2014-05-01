@@ -23,6 +23,7 @@ main_func = None
 lb = -10
 ub = 10
 array = None
+array_len = 8
 
 debug = True
 
@@ -971,7 +972,7 @@ def get_syms(n):
   for i in xrange(n):
     if i in array:
       syms += "l" + str(i) + " "
-      for j in xrange(10):
+      for j in xrange(array_len):
         syms += "i" + str(i) + "_" + str(j) + " "
     else:
       syms += "i" + str(i) + " "
@@ -983,7 +984,7 @@ def get_args(n):
   for i in xrange(n):
     if i in array:
       args += "(take (list "
-      for j in xrange(10):
+      for j in xrange(array_len):
         args += "i" + str(i) + "_" + str(j) + " "
       args += ") l" + str(i) + ")"
     else:
@@ -994,10 +995,10 @@ def get_args_cnst(n):
   args_cnst = ""
   for i in xrange(n):
     if i in array:
-      for j in xrange(10):
+      for j in xrange(array_len):
         args_cnst += "(< i" + str(i) + "_" + str(j) + " " + str(ub) + ") "
         args_cnst += "(> i" + str(i) + "_" + str(j) + " " + str(lb) + ") "
-      args_cnst += "(<= l" + str(i) + " 10) (>= l" + str(i) + " 0) "
+      args_cnst += "(<= l" + str(i) + " " + str(array_len) + ") (>= l" + str(i) + " 0) "
     else:
       args_cnst += "(< i" + str(i) + " " + str(ub) + ") (> i" + str(i) + " " + str(lb) + ") "
   return args_cnst
@@ -1239,10 +1240,12 @@ if __name__ == '__main__':
     #bugs = [(5,15), (5,18), (7,38)]
     #mutator = [offbyone, sametype, sametype]
     #bugs = [(5,15),(7,38)]
-    bugs = [(4,20),(9,14)] # ComputeDeriv
-    mutator = [offbyone, sametype] # ComputeDeriv
+    #bugs = [(4,20),(9,14)] # ComputeDeriv
+    #mutator = [offbyone, sametype] # ComputeDeriv
     #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
     #mutator = [offbyone, sametype] #h1-4 (hailstone)
+    bugs = [(6,23),(7,31)] # EvaluatePoly
+    mutator = [offbyone, sametype] # EvaluatePoly
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
     fixes = generateAllFixes(bugs, mutator)

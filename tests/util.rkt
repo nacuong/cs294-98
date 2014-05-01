@@ -27,19 +27,6 @@
           (assert #f)))
     (id arg ...)))
 
-;; (define-syntax-rule (bounded2 def (id arg ...) expr ...)
-;;   (define-syntax-rule (id x ...)
-;;     (id-bounded x ... bound)) ;; TODO: how to bind bound to variable "bound"
-;;   (def (id-bounded arg ... bound)
-;;        (if (protect (> bound 0))
-;;            (begin 
-;;              (set! bound (protect (sub1 bound)))
-;;              (define val (let () expr ...))
-;;              (set! bound (protect (add1 bound)))
-;;              val)
-;;            (assert #f))))
-    
-
 (define-syntax-rule (define/bounded (id arg ...) expr ...)
   (bounded define (id arg ...) expr ...))
 
@@ -85,4 +72,7 @@
       (append x y ...)
       (sym/+ x y ...)))
               
-       
+(define/bounded (expt b p)
+  (if (= p 0)
+      1
+      (* b (expt b (sub1 p)))))

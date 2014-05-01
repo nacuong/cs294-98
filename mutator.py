@@ -1,6 +1,20 @@
 import ast, copy
 from synthesis_ast import Either, AllNum, AllVar, AllNumVar
 
+class Generic01(ast.NodeVisitor):
+  def generic_visit(self, node):
+    return Either([AllNum(), AllVar()])
+
+class Generic02(ast.NodeVisitor):
+  def generic_visit(self, node):
+    add = ast.BinOp(Either([AllNum(), AllVar()]), ast.Add(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
+    sub = ast.BinOp(Either([AllNum(), AllVar()]), ast.Sub(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
+    mult = ast.BinOp(Either([AllNum(), AllVar()]), ast.Mult(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
+    div = ast.BinOp(Either([AllNum(), AllVar()]), ast.Div(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
+
+    return Either([add,sub,mult,div])
+
+
 class PreserveStructure(ast.NodeVisitor):
   def visit_UnaryOp(self, node):
     op = None

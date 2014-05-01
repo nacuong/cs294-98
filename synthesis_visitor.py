@@ -108,15 +108,42 @@ class SynthesisVisitor(ast.NodeVisitor):
     node.left = self.visit(left)
     node.comparators = [self.visit(comparators)]
 
+    if (node.lineno, node.col_offset) in self.locs:
+      self.fixes.append(node)
+
     return node
 
   """
   A visitor for list
   """
   def visit_List(self, node):
+    new_elts = []
+    for field, value in ast.iter_fields(node):
+      if field == "elts":
+        for v in value:
+          new_elts.append(self.visit(v))
+
+    node.elts = new_elts
+    if (node.lineno, node.col_offset) in self.locs:
+      self.fixes.append(node)
+
     return node
 
   def visit_Subscript(self, node):
+    value = None
+    inx = None
+    for field, value in ast.iter_fields(node):
+      if field == "value":
+        value = self.visit(value)
+      elif field == "slice":
+        inx = self.visit(value)
+
+    node.value = self.visit(value)
+    node.slice = self.visit(slice)
+
+    if (node.lineno, node.col_offset) in self.locs:
+      self.fixes.append(node)
+
     return node
 
   """

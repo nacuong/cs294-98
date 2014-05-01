@@ -8,7 +8,7 @@ cuong:
 - generalize # of fixes - DONE
 - multIA += -> *= - DONE
 - test preserveMutator - DONE (work for multIA)
-- add generic mutator
+- add generic mutator - There, not tested yet
 - everyOther-s2 doesn't print the last fix (subscript)
 
 mangpo:

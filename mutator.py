@@ -13,8 +13,8 @@ class PreserveStructure(ast.NodeVisitor):
 
     invert = ast.UnaryOp(ast.Invert, self.visit(operand), lineno = 0, col_offset = 0)
     nott = ast.UnaryOp(ast.Not, self.visit(operand), lineno = 0, col_offset = 0)
-    uadd = ast.UAdd(ast.UAdd, self.visit(operand), lineno = 0, col_offset = 0)
-    usub = ast.USub(ast.USub, self.visit(operand), lineno = 0, col_offset = 0)
+    uadd = ast.UnaryOp(ast.UAdd, self.visit(operand), lineno = 0, col_offset = 0)
+    usub = ast.UnaryOp(ast.USub, self.visit(operand), lineno = 0, col_offset = 0)
 
     return Either([invert,nott,uadd,usub])
 
@@ -31,10 +31,10 @@ class PreserveStructure(ast.NodeVisitor):
         val = value
 
 
-    add = ast.AugAssign(self.visit(target), ast.Add(), self.visit(val), lineno=0, col_offset=0)
-    sub = ast.AugAssign(self.visit(target), ast.Sub(), self.visit(val), lineno = 0, col_offset = 0)
-    mult = ast.AugAssign(self.visit(target), ast.Mult(), self.visit(val), lineno = 0, col_offset = 0)
-    div = ast.AugAssign(self.visit(target), ast.Div(), self.visit(val), lineno = 0, col_offset = 0)
+    add = ast.AugAssign(target, ast.Add(), self.visit(val), lineno=0, col_offset=0)
+    sub = ast.AugAssign(target, ast.Sub(), self.visit(val), lineno = 0, col_offset = 0)
+    mult = ast.AugAssign(target, ast.Mult(), self.visit(val), lineno = 0, col_offset = 0)
+    div = ast.AugAssign(target, ast.Div(), self.visit(val), lineno = 0, col_offset = 0)
 
     return Either([add,sub,mult,div])
 

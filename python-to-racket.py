@@ -183,12 +183,24 @@ class RacketVisitor(ast.NodeVisitor):
     self._cid += 1
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
+    cache_vid = self._vid
+    cache_nid = self._nid
+    cache_vnid = self._vnid
+    max_vid, max_nid, max_vnid = 0, 0, 0
 
     for field, value in ast.iter_fields(node):
       if field == "choices":
         self.indent_print(field + ":")
         self.indent = self.indent + 1
         for choice in value:
+          max_vid = max(max_vid, self._vid)
+          max_nid = max(max_nid, self._nid)
+          max_vnid = max(max_vnid, self._vnid)
+
+          self._vid = cache_vid
+          self._nid = cache_nid
+          self._vnid = cache_vnid
+
           self.indent_print(choice.__class__.__name__ + ":")
           self.indent = self.indent + 1
           self.visit(choice)
@@ -196,6 +208,10 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent = self.indent - 1 
       else:
         self.print_field_value(field, value)
+
+    self._vid = max_vid
+    self._nid = max_nid
+    self._vnid = max_vnid
 
     self.indent = self.indent - 1
     self.outputln(")")

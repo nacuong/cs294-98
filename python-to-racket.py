@@ -345,7 +345,6 @@ class RacketVisitor(ast.NodeVisitor):
       elif field == "args":
         args = value
 
-    print "func class =", func.__class__
     if func.__class__.__name__ == "Attribute":
       # Attribute
       self.indent_print("Attribute:")
@@ -667,18 +666,46 @@ class RacketVisitor(ast.NodeVisitor):
   A visitor for while statement
   """
   def visit_While(self, node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
     self.output("(while ")
 
     for field, value in ast.iter_fields(node):
       # print "while field: ", field, " value: ", value
+      self.indent_print(field + ":")
+      self.indent = self.indent + 1
       if field == "test":
         self.visit(value)
         self.newline()
-      if field == "body":
-        for stmt in value:
-          self.visit(stmt)
+      elif field == "body":
+        self.visit_list(value)
+      self.indent = self.indent - 1
 
     self.outputln(")")
+
+  def visit_For(self, node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
+    self.output("(for ([")
+
+    for field, value in ast.iter_fields(node):
+      self.indent_print(field + ":")
+      self.indent = self.indent + 1
+      if field == "target":
+        self.visit(value)
+      elif field == "iter":
+        self.visit(value)
+        self.outputln("])")
+      elif field == "body":
+        self.visit_list(value)
+      self.indent = self.indent - 1
+
+    self.outputln(")")
+    
 
   """
   A visitor for function arguments.
@@ -1164,8 +1191,8 @@ if __name__ == '__main__':
     #bugs = [(5,15), (5,18), (7,38)]
     #mutator = [offbyone, sametype, sametype]
     #bugs = [(5,15),(7,38)]
-    #bugs = [(4,20),(9,14)] # ComputeDeriv
-    bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
+    bugs = [(4,20),(9,14)] # ComputeDeriv
+    #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
     mutator = [offbyone, sametype]
     fixes = []
     for i in xrange(0, len(mutator)):

@@ -1,6 +1,7 @@
 #lang s-exp rosette
 
 (require rosette/lang/debug)
+(require (only-in rosette [+ sym/+]))
 
 (provide (all-defined-out))
 
@@ -78,5 +79,10 @@
   (if (< l u)
       (cons l (range-func (add1 l) u))
       (list)))
+
+(define-syntax-rule (+ x y ...)
+  (if (list? x)
+      (append x y ...)
+      (sym/+ x y ...)))
               
        

@@ -11,31 +11,13 @@ cuong:
 - add generic mutator
 
 mangpo:
-- return
 - for
+- return in loop, break
 
 ===== python to racket ====
 - quotient or /
 - base case
 - for
-
-- return
-  if x = 0:
-    return 0
-  else:
-    x = 1
-  x = x + 1
-  return x
-
-(define (f x)
-  (define ret #f)
-  (if (= x 0)
-    (set! ret 0)
-    (set! x 1))
-  (unless ret
-    (set! x (+ x 1))
-    (set! ret x))
-  ret)
 
 ======================================
 EXAMPLE for synthesis

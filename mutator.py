@@ -30,13 +30,14 @@ class PreserveStructure(ast.NodeVisitor):
       elif field == "value":
         val = value
 
+    add = ast.BinOp(target, ast.Add(), self.visit(val), lineno=0, col_offset=0)
+    sub = ast.BinOp(target, ast.Sub(), self.visit(val), lineno = 0, col_offset = 0)
+    mult = ast.BinOp(target, ast.Mult(), self.visit(val), lineno = 0, col_offset = 0)
+    div = ast.BinOp(target, ast.Div(), self.visit(val), lineno = 0, col_offset = 0)
+    either = Either([add,sub,mult,div])
 
-    add = ast.AugAssign(target, ast.Add(), self.visit(val), lineno=0, col_offset=0)
-    sub = ast.AugAssign(target, ast.Sub(), self.visit(val), lineno = 0, col_offset = 0)
-    mult = ast.AugAssign(target, ast.Mult(), self.visit(val), lineno = 0, col_offset = 0)
-    div = ast.AugAssign(target, ast.Div(), self.visit(val), lineno = 0, col_offset = 0)
-
-    return Either([add,sub,mult,div])
+    return ast.Assign([target], either, lineno=node.lineno,
+        col_offset=node.col_offset)
 
   def visit_BinOp(self, node):
     left = None

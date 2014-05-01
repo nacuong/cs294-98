@@ -144,7 +144,7 @@ class SourceVisitor(ast.NodeVisitor):
       elif field == "value":
         right = value
 
-    return self.visit(left) + "=" + self.visit(right)  
+    return self.visit(left) + " = " + self.visit(right)  
 
   """
   A visitor for return expression

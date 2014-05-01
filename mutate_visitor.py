@@ -28,6 +28,7 @@ class MutateVisitor(ast.NodeVisitor):
       mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
       mutated_node.lineno = node.lineno
       mutated_node.col_offset = node.col_offset
+
       return mutated_node
     else:
       target = None

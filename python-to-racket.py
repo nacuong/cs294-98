@@ -1101,7 +1101,10 @@ def run_synthesizer(ast, synrkt, fix, queue):
       #print "Mutated ast:"
       #PrintVisitor().visit(mutated_ast)
 
-    synthesizer = SynthesisVisitor(either, allnum, allvar)
+    locs = []
+    for loc in fix:
+      locs.append(loc)
+    synthesizer = SynthesisVisitor(either, allnum, allvar, locs)
     synthesizer.visit(mutated_ast)
     fixes = synthesizer.getFixes()
 

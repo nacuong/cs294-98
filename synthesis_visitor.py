@@ -4,10 +4,11 @@ class SynthesisVisitor(ast.NodeVisitor):
   fixes = []
   allvars = []
 
-  def __init__(self, either_map, num_map, var_map):
+  def __init__(self, either_map, num_map, var_map, locs):
     self.either_map = either_map
     self.num_map = num_map
     self.var_map = var_map
+    self.locs = locs
 
   def getFixes(self):
     return self.fixes
@@ -20,7 +21,9 @@ class SynthesisVisitor(ast.NodeVisitor):
       fix = node.choices[self.either_map[node.id]]
       fix.lineno = node.lineno
       fix.col_offset = node.col_offset
-      self.fixes.append(fix)
+      fix = self.visit(fix)
+      if (node.lineno, node.col_offset) in self.locs:
+        self.fixes.append(fix)
 
       return fix
     else:
@@ -34,7 +37,8 @@ class SynthesisVisitor(ast.NodeVisitor):
       fix = ast.Num(self.num_map[node.id])
       fix.lineno = node.lineno
       fix.col_offset = node.col_offset
-      self.fixes.append(fix)
+      if (node.lineno, node.col_offset) in self.locs:
+        self.fixes.append(fix)
 
       return fix
     else:
@@ -44,13 +48,12 @@ class SynthesisVisitor(ast.NodeVisitor):
   A visitor for all var
   """
   def visit_AllVar(self, node):
-    print self.allvars
-    print node.id
     if node.id in self.var_map:
-      fix = ast.Name(self.allvars[node.id], ast.Load)
+      fix = ast.Name(self.allvars[self.var_map[node.id]], ast.Load)
       fix.lineno = node.lineno
       fix.col_offset = node.col_offset
-      self.fixes.append(fix)
+      if (node.lineno, node.col_offset) in self.locs:
+        self.fixes.append(fix)
 
       return fix
     else:
@@ -80,6 +83,9 @@ class SynthesisVisitor(ast.NodeVisitor):
     node.op = self.visit(op)
     node.right = self.visit(right)
     node.left = self.visit(left)
+
+    if (node.lineno, node.col_offset) in self.locs:
+      self.fixes.append(node)
 
     return node
 
@@ -186,6 +192,9 @@ class SynthesisVisitor(ast.NodeVisitor):
 
       lhs.elts = new_lhs
       rhs.elts = new_rhs
+
+    if (node.lineno, node.col_offset) in self.locs:
+      self.fixes.append(node)
 
     return node
 

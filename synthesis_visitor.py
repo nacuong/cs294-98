@@ -130,16 +130,16 @@ class SynthesisVisitor(ast.NodeVisitor):
     return node
 
   def visit_Subscript(self, node):
-    value = None
+    val = None
     inx = None
     for field, value in ast.iter_fields(node):
       if field == "value":
-        value = self.visit(value)
+        val = value
       elif field == "slice":
-        inx = self.visit(value)
+        inx = value
 
-    node.value = self.visit(value)
-    node.slice = self.visit(slice)
+    node.value = self.visit(val)
+    node.slice = self.visit(inx)
 
     if (node.lineno, node.col_offset) in self.locs:
       self.fixes.append(node)

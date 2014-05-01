@@ -1,6 +1,22 @@
 import ast, copy
 from synthesis_ast import Either, AllNum, AllVar, AllNumVar
 
+class Mixer(ast.NodeVisitor):
+  def __init__(self, mutators):
+    self.mutators = mutators
+
+  def generic_visit(self, node):
+    nodes = []
+    for mutator in self.mutators:
+      mutated_node = mutator.visit(node)
+      if mutated_node not in nodes:
+        nodes.append(mutated_node)
+
+    if len(nodes) > 1:
+      return Either(nodes)
+    else:
+      return nodes[0]
+
 class Generic01(ast.NodeVisitor):
   def generic_visit(self, node):
     return Either([AllNum(), AllVar()])

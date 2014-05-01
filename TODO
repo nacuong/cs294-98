@@ -9,7 +9,7 @@ cuong:
 - multIA += -> *= - DONE
 - test preserveMutator - DONE (work for multIA)
 - add generic mutator - There, not tested yet
-- everyOther-s2 doesn't print the last fix (subscript)
+- everyOther-s2 doesn't print the last fix (subscript) - DONE
 
 mangpo:
 - try evalPoly 3

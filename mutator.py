@@ -68,6 +68,31 @@ class PreserveStructure(ast.NodeVisitor):
     return node
 
 class PreserveStructureAndOp(ast.NodeVisitor):
+  def visit_UnaryOp(self, node):
+    op = None
+    operand = None
+    for field, value in ast.iter_fields(node):
+      if field == "operand":
+        operand = value
+      elif field == "op":
+        op = value
+
+    return ast.UnaryOp(op, self.visit(operand), lineno=0, col_offset=0)
+
+  def visit_AugAssign(self, node):
+    target = None
+    op = None
+    val = None
+    for field, value in ast.iter_fields(node):
+      if field == "target":
+        target = value
+      elif field == "op":
+        op = value
+      elif field == "value":
+        val = value
+
+    return ast.Assign(target, op, self.visit(val), lineno=0, col_offset=0)
+
   def visit_BinOp(self, node):
     left = None
     op = None
@@ -83,7 +108,7 @@ class PreserveStructureAndOp(ast.NodeVisitor):
     return ast.BinOp(self.visit(left), op, self.visit(right), lineno = 0,
         col_offset = 0)
 
-    def visit_Num(self, node):
+  def visit_Num(self, node):
       return AllNum()
 
   def visit_Name(self, node):

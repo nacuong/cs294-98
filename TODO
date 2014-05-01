@@ -5,9 +5,9 @@ For poster
 
 cuong:
 - # of symbolic variables = # of holes
-- generalize # of fixes
-- multIA += -> *=
-- test preserveMutator
+- generalize # of fixes - DONE
+- multIA += -> *= - DONE
+- test preserveMutator - DONE (work for multIA)
 - add generic mutator
 - everyOther-s2 doesn't print the last fix (subscript)
 

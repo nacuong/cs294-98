@@ -1248,8 +1248,10 @@ if __name__ == '__main__':
     #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
     #mutator = [offbyone, sametype] #h1-4 (hailstone)
     #bugs = [(6,19)] # EvaluatePoly s2
-    bugs = [(6,23)] # EvaluatePoly s4
-    mutator = [offbyone, sametype] # EvaluatePoly
+    #bugs = [(6,23)] # EvaluatePoly s4
+    #mutator = [offbyone, sametype] # EvaluatePoly
+    bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
+    mutator = [offbyone, sametype] # EvaluateOther
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
     fixes = generateAllFixes(bugs, mutator)

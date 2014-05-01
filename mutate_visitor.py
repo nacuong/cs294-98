@@ -23,6 +23,25 @@ class MutateVisitor(ast.NodeVisitor):
     else:
       return node
 
+  def visit_Subscript(self, node):
+    if (node.lineno, node.col_offset) in self.mutator_map:
+      mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+      mutated_node.lineno = node.lineno
+      mutated_node.col_offset = node.col_offset
+      return mutated_node
+    else:
+      for field, value in ast.iter_fields(node):
+        if field == "value":
+          node.value = self.visit(value)
+        elif field == "slice":
+          node.slice = self.visit(value)
+      print "mutate Subsript.slice", node.slice, node.slice.__dict__
+      return node
+
+  def visit_Index(self, node):
+    node.value = self.visit(node.value)
+    return node
+
   def visit_AugAssign(self, node):
     if (node.lineno, node.col_offset) in self.mutator_map:
       mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)

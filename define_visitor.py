@@ -75,6 +75,9 @@ class DefineVisitor(ast.NodeVisitor):
         for stmt in value:
           self.visit(stmt)
 
+  # def visit_For(self, node):
+  #   self.env[node.target.id] = "var"
+
   """
   A visitor for function arguments.
   """

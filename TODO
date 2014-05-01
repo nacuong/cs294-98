@@ -9,15 +9,11 @@ cuong:
 - multIA += -> *=
 - test preserveMutator
 - add generic mutator
+- everyOther-s2 doesn't print the last fix (subscript)
 
 mangpo:
-- for
+- try evalPoly 3
 - return in loop, break
-
-===== python to racket ====
-- quotient or /
-- base case
-- for
 
 ======================================
 EXAMPLE for synthesis

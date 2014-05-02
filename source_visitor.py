@@ -63,7 +63,7 @@ class SourceVisitor(ast.NodeVisitor):
       elif field == "comparators":
         comparators = value[0]
 
-    return self.visit(left) + " " + self.op_to_string(ops) + " " + self.visit(right)
+    return self.visit(left) + " " + self.op_to_string(ops) + " " + self.visit(comparators)
 
   """
   A visitor for if expression

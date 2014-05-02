@@ -30,16 +30,30 @@ class Generic02(ast.NodeVisitor):
 
     return Either([add,sub,mult,div])
 
+#############  Super class for all mutators. ############
+class Mutator(ast.NodeVisitor):
+  def visit_AugAssign(self, node):
+    return ast.AugAssign(self.visit(node.target), node.op, node.value , lineno=node.lineno, col_offset=node.col_offset)
 
-class PreserveStructure(ast.NodeVisitor):
+  def visit_BinOp(self, node):
+    return ast.BinOp(self.visit(node.left), node.op, node.right, lineno=node.lineno, col_offset=node.col_offset)
+
+  def visit_BoolOp(self, node):
+    values = [x for x in node.values]
+    values[0] = self.visit(values[0])
+    return ast.BoolOp(node.op, values, lineno=node.lineno, col_offset=node.col_offset)
+
+  def visit_Compare(self, node):
+    return ast.Compare(self.visit(node.left), node.ops, node.comparators, lineno=node.lineno, col_offset=node.col_offset)
+  
+  def generic_visit(self, node):
+    return node
+
+
+class PreserveStructure(Mutator):
   def visit_UnaryOp(self, node):
-    op = None
-    operand = None
-    for field, value in ast.iter_fields(node):
-      if field == "operand":
-        operand = value
-      elif field == "op":
-        op = value
+    op = node.op
+    operand = node.operand
 
     invert = ast.UnaryOp(ast.Invert, self.visit(operand), lineno = 0, col_offset = 0)
     nott = ast.UnaryOp(ast.Not, self.visit(operand), lineno = 0, col_offset = 0)
@@ -49,16 +63,9 @@ class PreserveStructure(ast.NodeVisitor):
     return Either([invert,nott,uadd,usub])
 
   def visit_AugAssign(self, node):
-    target = None
-    op = None
-    val = None
-    for field, value in ast.iter_fields(node):
-      if field == "target":
-        target = value
-      elif field == "op":
-        op = value
-      elif field == "value":
-        val = value
+    target = node.target
+    op = node.op
+    val = node.value
 
     add = ast.BinOp(target, ast.Add(), self.visit(val), lineno=0, col_offset=0)
     sub = ast.BinOp(target, ast.Sub(), self.visit(val), lineno = 0, col_offset = 0)
@@ -66,22 +73,14 @@ class PreserveStructure(ast.NodeVisitor):
     div = ast.BinOp(target, ast.Div(), self.visit(val), lineno = 0, col_offset = 0)
     either = Either([add,sub,mult,div])
 
-    return ast.Assign([target], either, lineno=node.lineno,
+    return ast.Assign(target, either, lineno=node.lineno,
         col_offset=node.col_offset)
 
   def visit_BinOp(self, node):
-    left = None
-    op = None
-    right = None
-    for field, value in ast.iter_fields(node): 
-      if field == "left":
-        left = value
-      elif field == "op":
-        op = value
-      elif field == "right":
-        right = value
+    left = node.left
+    op = node.op
+    right = node.right
 
-    # visit left and right once, and reuse them?
     add = ast.BinOp(self.visit(left), ast.Add(), self.visit(right), lineno = 0, col_offset = 0)
     sub = ast.BinOp(self.visit(left), ast.Sub(), self.visit(right), lineno = 0, col_offset = 0)
     mult = ast.BinOp(self.visit(left), ast.Mult(), self.visit(right), lineno = 0, col_offset = 0)
@@ -90,16 +89,9 @@ class PreserveStructure(ast.NodeVisitor):
     return Either([add,sub,mult,div])
 
   def visit_Compare(self, node):
-    left = None
-    op = None
-    comparators = None
-    for field, value in ast.iter_fields(node):
-      if field == "left":
-        left = value
-      elif field == "ops":
-        op = value[0]
-      elif field == "comparators":
-        comparators = value[0]
+    left = node.left
+    op = node.op[0]
+    comparators = node.comparators[0]
 
     left = self.visit(left)
     comparators = [self.visit(comparators)]
@@ -120,6 +112,15 @@ class PreserveStructure(ast.NodeVisitor):
       In = ast.Compare(left, [ast.In()], comparators)
       NotInn = ast.Compare(left, [ast.NotIn()], comparators)
       return Either([In,NotIn])
+    return node
+
+  def visit_BoolOp(self, node):
+    op = node.op
+    values = node.values
+
+    And = ast.BoolOp(ast.And(), values)
+    Or = ast.BoolOp(ast.Or(), values)
+    return Either([And,Or])
 
   def visit_Num(self, node):
     return AllNum()
@@ -127,49 +128,23 @@ class PreserveStructure(ast.NodeVisitor):
   def visit_Name(self, node):
     return AllVar()
 
-  def generic_visit(seld, node):
-    return node
-
-class PreserveStructureAndOp(ast.NodeVisitor):
+class PreserveStructureAndOp(Mutator):
   def visit_UnaryOp(self, node):
-    op = None
-    operand = None
-    for field, value in ast.iter_fields(node):
-      if field == "operand":
-        operand = value
-      elif field == "op":
-        op = value
-
-    return ast.UnaryOp(op, self.visit(operand), lineno=0, col_offset=0)
+    return ast.UnaryOp(node.op, self.visit(node.operand), lineno=0, col_offset=0)
 
   def visit_AugAssign(self, node):
-    target = None
-    op = None
-    val = None
-    for field, value in ast.iter_fields(node):
-      if field == "target":
-        target = value
-      elif field == "op":
-        op = value
-      elif field == "value":
-        val = value
-
-    return ast.Assign(target, op, self.visit(val), lineno=0, col_offset=0)
+    return ast.Assign(node.target, node.op, self.visit(node.value), lineno=0, col_offset=0)
 
   def visit_BinOp(self, node):
-    left = None
-    op = None
-    right = None
-    for field, value in ast.iter_fields(node): 
-      if field == "left":
-        left = value
-      elif field == "op":
-        op = value
-      elif field == "right":
-        right = value
-
-    return ast.BinOp(self.visit(left), op, self.visit(right), lineno = 0,
+    return ast.BinOp(self.visit(node.left), node.op, self.visit(node.right), lineno = 0,
         col_offset = 0)
+
+  def visit_BoolOp(self, node):
+    return ast.BoolOp(node.op, [self.visit(v) for v in node.values], lineno = 0, 
+                      col_offset = 0)
+
+  def visit_Compare(self, node):
+    return ast.Compare(self.visit(node.left), self.ops, [self.visit(node.comparators[0])])
 
   def visit_Num(self, node):
       return AllNum()
@@ -177,20 +152,34 @@ class PreserveStructureAndOp(ast.NodeVisitor):
   def visit_Name(self, node):
     return AllVar()
 
-  def generic_visit(seld, node):
-    return node
+class OffByOne(Mutator):
 
-class OffByOne(ast.NodeVisitor):
-
-  def generic_visit(self, node):
+  def modify(self, node):
     plus = ast.BinOp(copy.deepcopy(node),ast.Add(),ast.Num(1, lineno=0,
-      col_offset=0), lineno=0, col_offset=0)
+                                                           col_offset=0), lineno=0, col_offset=0)
     minus = ast.BinOp(copy.deepcopy(node),ast.Sub(),ast.Num(1, lineno=0,
-      col_offset=0), lineno=0, col_offset=0)
-    return Either([plus,minus])
+                                                            col_offset=0), lineno=0, col_offset=0)
+    return Either([node,plus,minus])
 
+  def visit_Num(self, node):
+    return self.modify(node)
 
-class TrySameType(ast.NodeVisitor):
+  def visit_Name(self, node):
+    return self.modify(node)
+
+  def visit_Subscript(self, node):
+    return self.modify(node)
+
+  def visit_BinOp(self, node):
+    return self.modify(node)
+
+  def visit_UnaryOp(self, node):
+    if isinstance(node.op, ast.UAdd) or isinstance(node.op, ast.USub):
+      return self.modify(node)
+    else:
+      return node
+
+class TrySameType(Mutator):
 
   def visit_Num(self, node):
     return AllNum()
@@ -198,5 +187,4 @@ class TrySameType(ast.NodeVisitor):
   def visit_Name(self, node):
     return AllVar()
 
-  def generic_visit(self, node):
-    return node
+

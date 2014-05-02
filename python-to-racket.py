@@ -1,5 +1,5 @@
 import ast, sys, json, getopt, subprocess
-import json, copy
+import json, copy, time
 from define_visitor import DefineVisitor
 from return_visitor import ReturnVisitor
 from param_visitor import ParamVisitor
@@ -1230,6 +1230,7 @@ def parallel_synthesis(s_ast, synrkt, bugs, mutators):
         print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
         print "\t " + SourceVisitor().visit(fix)
       break
+    time.sleep(1)
 
 def mixer_synthesis(s_ast, synrkt, bugs, mutators):
   mixer = Mixer(mutators)
@@ -1315,17 +1316,17 @@ if __name__ == '__main__':
     #mutator = [offbyone, sametype, sametype]
     #bugs = [(5,15),(7,38)]
 
-    #bugs = [(4,20),(9,14)] # ComputeDeriv
-    #mutator = [offbyone, sametype] # ComputeDeriv
-    bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
-    mutator = [offbyone, sametype] #h1-4 (hailstone)
+    bugs = [(4,20),(9,14)] # ComputeDeriv
+    mutator = [offbyone, sametype] # ComputeDeriv
+    #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
+    #mutator = [offbyone, sametype] #h1-4 (hailstone)
     #bugs = [(6,19)] # EvaluatePoly s2
     #bugs = [(6,23)] # EvaluatePoly s4
     #mutator = [offbyone, sametype] # EvaluatePoly
     #bugs = [(11,24)] # EvaluatePoly s3
     #mutator = [samestruct] # EvaluatePoly s3
     #bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
-    #mutator = [offbyone, sametype] # EvaluateOther
+    #mutator = [offbyone, sametype] # EveryOther
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
     #parallel_synthesis(s_ast, synrkt, bugs, mutator)

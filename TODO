@@ -4,10 +4,16 @@ For poster
 3) compare with rishabh's tool (when his doesn't work)
 
 cuong:
+- range(l) => range(len(l))
+- 2 cores: 1) mixer 2) sequential with priority
+
 - # of symbolic variables = # of holes
 - add generic mutator - There, not tested yet
 
 mangpo:
+- fix bug
+- get some performance number: parallel vs mixer
+
 - return in loop, break
 
 ======================================

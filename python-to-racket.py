@@ -1269,11 +1269,10 @@ def priority_synthesis(s_ast, synrkt, bugs, mutators, score, parallel, queue):
 def mixer_synthesis(s_ast, synrkt, bugs, mutators, parallel, queue):
   mixer = Mixer(mutators)
   fix = {}
-  queue = Queue()
   for bug in bugs:
     fix[bug] = mixer
 
-  fixes = run_synthesizer(s_ast, synrkt, fix, queue, False)
+  fixes = run_synthesizer(s_ast, synrkt, fix, None, False)
 
   if fixes:
     if parallel:
@@ -1390,8 +1389,8 @@ if __name__ == '__main__':
     generic02 = Generic02()
     score = {offbyone.__class__.name:1, sametype.__class__.name:2, samestruct.__class__.name:3, generic01.__class__.name:4, generic02.__class__.name:5}
 
-    bugs = [(5,15),(7,38)] # hw2-1 (product)
-    mutator = [offbyone, sametype]
+    #bugs = [(5,15),(7,38)] # hw2-1 (product)
+    #mutator = [offbyone, sametype]
 
     #bugs = [(4,20),(9,14)] # ComputeDeriv
     #mutator = [offbyone, sametype] # ComputeDeriv
@@ -1402,8 +1401,8 @@ if __name__ == '__main__':
     #mutator = [offbyone, sametype] # EvaluatePoly
     #bugs = [(11,24)] # EvaluatePoly s3
     #mutator = [samestruct] # EvaluatePoly s3
-    #bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
-    #mutator = [offbyone, sametype] # EveryOther
+    bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
+    mutator = [offbyone, sametype] # EveryOther
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
 

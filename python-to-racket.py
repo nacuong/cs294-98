@@ -1048,7 +1048,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("(require rosette/solver/z3/z3)\n")
   f.write("(require \"util.rkt\")\n")
   f.write("(require \"../" + t_rkt + "\")\n\n")
-  f.write("(current-solver (new z3%))\n")
+  #f.write("(current-solver (new z3%))\n")
   f.write("(define-symbolic ")
   f.write(syms)
   f.write("number?)\n")
@@ -1312,12 +1312,11 @@ if __name__ == '__main__':
     sametype = TrySameType()
     samestruct = PreserveStructure()
 
-    #bugs = [(5,15), (5,18), (7,38)]
-    #mutator = [offbyone, sametype, sametype]
-    #bugs = [(5,15),(7,38)]
+    bugs = [(5,15),(7,38)] # hw2-1 (product)
+    mutator = [offbyone, sametype]
 
-    bugs = [(4,20),(9,14)] # ComputeDeriv
-    mutator = [offbyone, sametype] # ComputeDeriv
+    #bugs = [(4,20),(9,14)] # ComputeDeriv
+    #mutator = [offbyone, sametype] # ComputeDeriv
     #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
     #mutator = [offbyone, sametype] #h1-4 (hailstone)
     #bugs = [(6,19)] # EvaluatePoly s2

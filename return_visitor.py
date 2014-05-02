@@ -13,7 +13,7 @@ class ReturnVisitor(ast.NodeVisitor):
     has_return = False
 
     for field, value in ast.iter_fields(node):
-      if field == "body" and isinstance(value, list):
+      if field == "body" and isinstance(value, list) and (not isinstance(node, ast.Module)):
         l = []
         ret = False
         for item in value:
@@ -36,7 +36,7 @@ class ReturnVisitor(ast.NodeVisitor):
       elif isinstance(value, list):
         for item in value:
           if isinstance(item, ast.AST):
-            ret = self.visit(item)
+            self.visit(item)
           else:
             raise JSONVisitorException("Unexpected error: Missed case: %s." % item)
       elif isinstance(value, ast.AST):

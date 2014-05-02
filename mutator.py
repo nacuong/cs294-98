@@ -7,14 +7,17 @@ class Mixer(ast.NodeVisitor):
 
   def generic_visit(self, node):
     nodes = []
+    either = Either(nodes)
     for mutator in self.mutators:
       mutated_node = mutator.visit(node)
       if mutated_node not in nodes:
         nodes.append(mutated_node)
 
     if len(nodes) > 1:
-      return Either(nodes)
+      either.update(nodes)
+      return either
     else:
+      Either.count -= 1
       return nodes[0]
 
 class Generic01(ast.NodeVisitor):

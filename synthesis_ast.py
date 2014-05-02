@@ -12,6 +12,9 @@ class Either(ast.AST):
     self.col_offset = 0
     Either.count = Either.count + 1
 
+  def update(self, choices):
+    self.choices = choices
+
 class AllNum(ast.AST):
   _fields = ['id','lineno','col_offset']
   count = 0

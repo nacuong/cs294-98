@@ -171,14 +171,18 @@ class MutateVisitor(ast.NodeVisitor):
   A visitor for call expression
   """
   def visit_Call(self, node):
-    for field, value in ast.iter_fields(node):
-      if field == "func":
-        node.func = self.visit(value)
-      elif field == "args":
-        node.args = [self.visit(arg) for arg in value]
+    if (node.lineno, node.col_offset) in self.mutator_map:
+      mutated_node = self.mutate_node(node)
 
-    return node
+      return mutated_node
+    else:
+      for field, value in ast.iter_fields(node):
+        if field == "func":
+          node.func = self.visit(value)
+        elif field == "args":
+          node.args = [self.visit(arg) for arg in value]
 
+      return node
 
   """
   A visitor for assign expression
@@ -241,6 +245,20 @@ class MutateVisitor(ast.NodeVisitor):
         node.test = self.visit(value)
       if field == "body":
         node.body = [self.visit(stmt) for stmt in value]
+
+    return node
+
+  def visit_For(self, node):
+    for field, value in ast.iter_fields(node):
+      if field == "target":
+        node.target = self.visit(value)
+      elif field == "iter":
+        node.iter = self.visit(value)
+      elif field == "body":
+        mutated_body = []
+        for item in value:
+          mutated_body.append(self.visit(item))
+        node.body = mutated_body
 
     return node
 

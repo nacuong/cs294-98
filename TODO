@@ -5,7 +5,7 @@ For poster
 
 cuong:
 - range(l) => range(len(l))
-- 2 cores: 1) mixer 2) sequential with priority
+- 2 cores: 1) mixer 2) sequential with priority - DONE
 
 - # of symbolic variables = # of holes
 - add generic mutator - There, not tested yet

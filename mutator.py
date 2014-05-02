@@ -58,6 +58,32 @@ class Mutator(ast.NodeVisitor):
   def generic_visit(self, node):
     return node
 
+class RangeWithLen(Mutator):
+  name = "RangeWithLen"
+
+  def visit_Call(self, node):
+    func = None
+    args = None
+
+    for field, value in ast.iter_fields(node):
+      if field == "func":
+        func = value
+      elif field == "args":
+        args = value
+
+    if func.id == "range":
+      arg = args[0]
+      if isinstance(arg, ast.Name):
+        len_node = ast.Call(ast.Name("len", ast.Load, lineno=0, col_offset=0), [arg], [], None, None, lineno=0, col_offset=0)
+
+        mutated_node = ast.Call(ast.Name("range", ast.Load, lineno=0,
+          col_offset=0), [Either([len_node, arg])], [], None, None, lineno=node.lineno, col_offset=node.col_offset) 
+
+        return mutated_node
+      else:
+        return node
+    else:
+      return node
 
 class PreserveStructure(Mutator):
   name = "PreserveStructure"

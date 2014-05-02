@@ -6,7 +6,7 @@ from param_visitor import ParamVisitor
 from print_visitor import PrintVisitor
 from mutate_visitor import MutateVisitor
 from source_visitor import SourceVisitor
-from mutator import OffByOne, TrySameType, PreserveStructure, PreserveStructureAndOp, Mixer, Generic01, Generic02
+from mutator import OffByOne, TrySameType, PreserveStructure, PreserveStructureAndOp, RangeWithLen, Mixer, Generic01, Generic02
 from synthesis_visitor import SynthesisVisitor
 from optparse import OptionParser
 from multiprocessing import Process, Queue
@@ -741,7 +741,7 @@ class RacketVisitor(ast.NodeVisitor):
         self.visit(value)
       elif field == "iter":
         if isinstance(value,ast.Call) and value.func.id == "range":
-          self.indent_print("range:")
+          self.indent_print("range: (line, col): (" + str(value.lineno) + ", " + str(value.col_offset) + ")")
           self.indent = self.indent + 1
           self.output(" (in-range")
           for arg in value.args:
@@ -1385,6 +1385,7 @@ if __name__ == '__main__':
     offbyone = OffByOne()
     sametype = TrySameType()
     samestruct = PreserveStructure()
+    rangewithlen = RangeWithLen()
     generic01 = Generic01()
     generic02 = Generic02()
     score = {offbyone.__class__.name:1, sametype.__class__.name:2, samestruct.__class__.name:3, generic01.__class__.name:4, generic02.__class__.name:5}
@@ -1401,8 +1402,10 @@ if __name__ == '__main__':
     #mutator = [offbyone, sametype] # EvaluatePoly
     #bugs = [(11,24)] # EvaluatePoly s3
     #mutator = [samestruct] # EvaluatePoly s3
-    bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
-    mutator = [offbyone, sametype] # EveryOther
+    #bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
+    #mutator = [offbyone, sametype] # EveryOther
+    bugs = [(3, 13)] #EveryOther s1
+    mutator =  [rangewithlen] #EveryOther
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
 
@@ -1410,7 +1413,7 @@ if __name__ == '__main__':
 
     #priority_synthesis(s_ast, synrkt, bugs, mutator, score, False, None)
 
-    #mixer_synthesis(s_ast, synrkt, bugs, mutator, False, None)
+    mixer_synthesis(s_ast, synrkt, bugs, mutator, False, None)
 
-    mixer_and_priority_synthesis(s_ast, synrkt, bugs, mutator, score)
+    #mixer_and_priority_synthesis(s_ast, synrkt, bugs, mutator, score)
  

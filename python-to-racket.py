@@ -6,10 +6,11 @@ from param_visitor import ParamVisitor
 from print_visitor import PrintVisitor
 from mutate_visitor import MutateVisitor
 from source_visitor import SourceVisitor
-from mutator import OffByOne, TrySameType, PreserveStructure, PreserveStructureAndOp, Mixer
+from mutator import OffByOne, TrySameType, PreserveStructure, PreserveStructureAndOp, Mixer, Generic01, Generic02
 from synthesis_visitor import SynthesisVisitor
 from optparse import OptionParser
 from multiprocessing import Process, Queue
+from subprocess import CalledProcessError
 
 t_py = None
 t_rkt = None
@@ -1105,7 +1106,11 @@ def run_synthesizer(ast, synrkt, fix, queue, parallel):
   allnumvarvar = {}
   allnum = {}
   allvar = {}
-  synr_result = subprocess.check_output(["racket", synrkt], shell=False)
+  try:
+    synr_result = subprocess.check_output(["racket", synrkt], shell=False)
+  except CalledProcessError:
+    synr_result = None
+    pass
 
   if synr_result:
     for line in synr_result.split('\n'): 
@@ -1122,13 +1127,6 @@ def run_synthesizer(ast, synrkt, fix, queue, parallel):
         allnum[int(res[0].strip("_n"))] = int(res[1])
       elif res[0].startswith("_v"):
         allvar[int(res[0].strip("_v"))] = int(res[1])
-
-    #if debug:
-      #print either
-      #print allnum
-
-      #print "Mutated ast:"
-      #PrintVisitor().visit(mutated_ast)
 
     locs = []
     for loc in fix:
@@ -1232,7 +1230,43 @@ def parallel_synthesis(s_ast, synrkt, bugs, mutators):
       break
     time.sleep(1)
 
-def mixer_synthesis(s_ast, synrkt, bugs, mutators):
+def get_score(fix, score):
+  s = 0
+  for bug in fix:
+    mutator = fix[bug]
+    s += score[mutator.__class__.name]
+
+  return s
+
+def priority_synthesis(s_ast, synrkt, bugs, mutators, score, parallel, queue):
+  fixes = generateAllFixes(bugs, mutators)
+  fixes = sorted(fixes, key=lambda fix: get_score(fix, score)) 
+
+  sol_found = False
+  cnt = 1
+  for fix in fixes:
+    results = run_synthesizer(s_ast, synrkt + "_pry", fix, None, False)
+
+    if results:
+      if parallel:
+        queue.put((results, "priority"))
+      else:
+        sol_found = True
+        print "Solution found after " + str(cnt) + "/" + str(len(fixes)) + " trials:"
+        for result in results:
+          print "At line " + str(result.lineno) + " and offset " + str(result.col_offset) 
+          print "\t " + SourceVisitor().visit(result)
+      break
+
+    cnt += 1
+
+  if not sol_found:
+    if parallel:
+      queue.put(([], "priority"))
+    else:
+      print "No solution found!"
+
+def mixer_synthesis(s_ast, synrkt, bugs, mutators, parallel, queue):
   mixer = Mixer(mutators)
   fix = {}
   queue = Queue()
@@ -1242,11 +1276,52 @@ def mixer_synthesis(s_ast, synrkt, bugs, mutators):
   fixes = run_synthesizer(s_ast, synrkt, fix, queue, False)
 
   if fixes:
-    for fix in fixes:
-      print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
-      print "\t " + SourceVisitor().visit(fix)
+    if parallel:
+      queue.put((fixes, "mixer"))
+    else:
+      for fix in fixes:
+        print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
+        print "\t " + SourceVisitor().visit(fix)
+  elif parallel:
+    queue.put(([], "mixer"))
   else:
     print "No solution found!"
+
+def mixer_and_priority_synthesis(s_ast, synrkt, bugs, mutators, score):
+  queue = Queue()
+
+  mixer = Process(target=mixer_synthesis, args=(s_ast, synrkt, bugs,
+    mutator, True, queue))
+
+  priority = Process(target=priority_synthesis, args=(s_ast, synrkt, bugs,
+    mutator, score, True, queue))
+
+  mixer.start()
+  priority.start()
+
+  while True:
+    if not queue.empty():
+
+      # terminate all processes
+      if mixer.is_alive():
+        mixer.terminate()
+
+      if priority.is_alive():
+        priority.terminate()
+
+      # display results
+      (fixes, synthesizer) = queue.get()
+      if fixes:
+        for fix in fixes:
+          print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
+          print "\t " + SourceVisitor().visit(fix)
+      else:
+        print "No solution found!"
+
+      print "Winner: " + synthesizer
+
+      break
+    time.sleep(1)
 
 if __name__ == '__main__':
 
@@ -1311,6 +1386,9 @@ if __name__ == '__main__':
     offbyone = OffByOne()
     sametype = TrySameType()
     samestruct = PreserveStructure()
+    generic01 = Generic01()
+    generic02 = Generic02()
+    score = {offbyone.__class__.name:1, sametype.__class__.name:2, samestruct.__class__.name:3, generic01.__class__.name:4, generic02.__class__.name:5}
 
     bugs = [(5,15),(7,38)] # hw2-1 (product)
     mutator = [offbyone, sametype]
@@ -1328,6 +1406,12 @@ if __name__ == '__main__':
     #mutator = [offbyone, sametype] # EveryOther
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
+
     #parallel_synthesis(s_ast, synrkt, bugs, mutator)
-    mixer_synthesis(s_ast, synrkt, bugs, mutator)
+
+    #priority_synthesis(s_ast, synrkt, bugs, mutator, score, False, None)
+
+    #mixer_synthesis(s_ast, synrkt, bugs, mutator, False, None)
+
+    mixer_and_priority_synthesis(s_ast, synrkt, bugs, mutator, score)
  

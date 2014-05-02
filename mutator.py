@@ -2,6 +2,8 @@ import ast, copy
 from synthesis_ast import Either, AllNum, AllVar, AllNumVar
 
 class Mixer(ast.NodeVisitor):
+  name = "Mixer"
+
   def __init__(self, mutators):
     self.mutators = mutators
 
@@ -21,10 +23,14 @@ class Mixer(ast.NodeVisitor):
       return nodes[0]
 
 class Generic01(ast.NodeVisitor):
+  name = "Generic01"
+
   def generic_visit(self, node):
     return Either([AllNum(), AllVar()])
 
 class Generic02(ast.NodeVisitor):
+  name = "Generic02"
+
   def generic_visit(self, node):
     add = ast.BinOp(Either([AllNum(), AllVar()]), ast.Add(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
     sub = ast.BinOp(Either([AllNum(), AllVar()]), ast.Sub(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
@@ -54,6 +60,8 @@ class Mutator(ast.NodeVisitor):
 
 
 class PreserveStructure(Mutator):
+  name = "PreserveStructure"
+
   def visit_UnaryOp(self, node):
     op = node.op
     operand = node.operand
@@ -132,6 +140,8 @@ class PreserveStructure(Mutator):
     return AllVar()
 
 class PreserveStructureAndOp(Mutator):
+  name = "PreserveStructureAndOp"
+
   def visit_UnaryOp(self, node):
     return ast.UnaryOp(node.op, self.visit(node.operand), lineno=0, col_offset=0)
 
@@ -156,6 +166,7 @@ class PreserveStructureAndOp(Mutator):
     return AllVar()
 
 class OffByOne(Mutator):
+  name = "OffByOne"
 
   def modify(self, node):
     plus = ast.BinOp(copy.deepcopy(node),ast.Add(),ast.Num(1, lineno=0,
@@ -183,6 +194,7 @@ class OffByOne(Mutator):
       return node
 
 class TrySameType(Mutator):
+  name = "TrySameType"
 
   def visit_Num(self, node):
     return AllNum()

@@ -1,6 +1,36 @@
 import ast, copy
 from synthesis_ast import Either, AllNum, AllVar, AllNumVar
 
+class Mixer(ast.NodeVisitor):
+  def __init__(self, mutators):
+    self.mutators = mutators
+
+  def generic_visit(self, node):
+    nodes = []
+    for mutator in self.mutators:
+      mutated_node = mutator.visit(node)
+      if mutated_node not in nodes:
+        nodes.append(mutated_node)
+
+    if len(nodes) > 1:
+      return Either(nodes)
+    else:
+      return nodes[0]
+
+class Generic01(ast.NodeVisitor):
+  def generic_visit(self, node):
+    return Either([AllNum(), AllVar()])
+
+class Generic02(ast.NodeVisitor):
+  def generic_visit(self, node):
+    add = ast.BinOp(Either([AllNum(), AllVar()]), ast.Add(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
+    sub = ast.BinOp(Either([AllNum(), AllVar()]), ast.Sub(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
+    mult = ast.BinOp(Either([AllNum(), AllVar()]), ast.Mult(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
+    div = ast.BinOp(Either([AllNum(), AllVar()]), ast.Div(), Either([AllNum(), AllVar()]), lineno = 0, col_offset = 0)
+
+    return Either([add,sub,mult,div])
+
+
 class PreserveStructure(ast.NodeVisitor):
   def visit_UnaryOp(self, node):
     op = None
@@ -101,6 +131,31 @@ class PreserveStructure(ast.NodeVisitor):
     return node
 
 class PreserveStructureAndOp(ast.NodeVisitor):
+  def visit_UnaryOp(self, node):
+    op = None
+    operand = None
+    for field, value in ast.iter_fields(node):
+      if field == "operand":
+        operand = value
+      elif field == "op":
+        op = value
+
+    return ast.UnaryOp(op, self.visit(operand), lineno=0, col_offset=0)
+
+  def visit_AugAssign(self, node):
+    target = None
+    op = None
+    val = None
+    for field, value in ast.iter_fields(node):
+      if field == "target":
+        target = value
+      elif field == "op":
+        op = value
+      elif field == "value":
+        val = value
+
+    return ast.Assign(target, op, self.visit(val), lineno=0, col_offset=0)
+
   def visit_BinOp(self, node):
     left = None
     op = None
@@ -116,7 +171,7 @@ class PreserveStructureAndOp(ast.NodeVisitor):
     return ast.BinOp(self.visit(left), op, self.visit(right), lineno = 0,
         col_offset = 0)
 
-    def visit_Num(self, node):
+  def visit_Num(self, node):
       return AllNum()
 
   def visit_Name(self, node):

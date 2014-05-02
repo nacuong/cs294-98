@@ -5,8 +5,7 @@ For poster
 
 cuong:
 - # of symbolic variables = # of holes
-- test preserveMutator
-- add generic mutator
+- add generic mutator - There, not tested yet
 
 mangpo:
 - return in loop, break

@@ -93,6 +93,28 @@ class SourceVisitor(ast.NodeVisitor):
 
     return string
 
+  def visit_List(self, node):
+    string = "["
+    for field, value in ast.iter_fields(node):
+      if field == "elts":
+        for v in value:
+          string += " " + self.visit(v) + ","
+    string += "]"
+
+    return string
+
+  def visit_Subscript(self, node):
+    string = ""
+    value = ""
+    inx = ""
+    for field, value in ast.iter_fields(node):
+      if field == "value":
+        value = self.visit(value)
+      elif field == "slice":
+        inx = self.visit(value)
+
+    return value + "[" + inx + "]"
+
   """
   A visitor for call expression
   """

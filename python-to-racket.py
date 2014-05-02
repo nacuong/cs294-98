@@ -6,7 +6,7 @@ from param_visitor import ParamVisitor
 from print_visitor import PrintVisitor
 from mutate_visitor import MutateVisitor
 from source_visitor import SourceVisitor
-from mutator import OffByOne, TrySameType, PreserveStructure, PreserveStructureAndOp
+from mutator import OffByOne, TrySameType, PreserveStructure, PreserveStructureAndOp, Mixer
 from synthesis_visitor import SynthesisVisitor
 from optparse import OptionParser
 from multiprocessing import Process, Queue
@@ -198,10 +198,6 @@ class RacketVisitor(ast.NodeVisitor):
         self.indent_print(field + ":")
         self.indent = self.indent + 1
         for choice in value:
-          max_vid = max(max_vid, self._vid)
-          max_nid = max(max_nid, self._nid)
-          max_vnid = max(max_vnid, self._vnid)
-
           self._vid = cache_vid
           self._nid = cache_nid
           self._vnid = cache_vnid
@@ -210,6 +206,11 @@ class RacketVisitor(ast.NodeVisitor):
           self.indent = self.indent + 1
           self.visit(choice)
           self.indent = self.indent - 1
+
+          max_vid = max(max_vid, self._vid)
+          max_nid = max(max_nid, self._nid)
+          max_vnid = max(max_vnid, self._vnid)
+
         self.indent = self.indent - 1 
       else:
         self.print_field_value(field, value)
@@ -1095,7 +1096,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
 
   return clone_ast
 
-def run_synthesizer(ast, synrkt, fix, queue):
+def run_synthesizer(ast, synrkt, fix, queue, parallel):
   mutated_ast = generate_synthesizer(ast, synrkt, fix)
 
   either = {}
@@ -1136,7 +1137,12 @@ def run_synthesizer(ast, synrkt, fix, queue):
     synthesizer.visit(mutated_ast)
     fixes = synthesizer.getFixes()
 
-    queue.put(fixes)
+    if parallel:
+      queue.put(fixes)
+    else:
+      return fixes
+  else:
+    return None
 
 def autograde():
   t_args = ParamVisitor(main_func).visit(t_ast)
@@ -1199,6 +1205,47 @@ def generateAllFixes(bugs, mutators):
         fixes.append(fix)
 
     return fixes
+
+def parallel_synthesis(s_ast, synrkt, bugs, mutators): 
+  fixes = generateAllFixes(bugs, mutators)
+  queue = Queue()
+  workers = []
+
+  for i in xrange(0, len(fixes)):
+    workers.append(Process(target=run_synthesizer, args=(s_ast, synrkt + "_"
+      + str(i), fixes[i], queue, True)))
+
+  for i in xrange(0, len(fixes)):
+    workers[i].start()
+
+  while True:
+    if not queue.empty():
+      # terminate all processes
+      for i in xrange(0, len(fixes)):
+        if workers[i].is_alive():
+          workers[i].terminate()
+      # display results
+      fixes = queue.get()
+      for fix in fixes:
+        print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
+        print "\t " + SourceVisitor().visit(fix)
+      break
+
+def mixer_synthesis(s_ast, synrkt, bugs, mutators):
+  mixer = Mixer(mutators)
+  fix = {}
+  queue = Queue()
+  for bug in bugs:
+    fix[bug] = mixer
+
+  fixes = run_synthesizer(s_ast, synrkt, fix, queue, False)
+
+  if fixes:
+    for fix in fixes:
+      print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
+      print "\t " + SourceVisitor().visit(fix)
+  else:
+    print "No solution found!"
 
 if __name__ == '__main__':
 
@@ -1270,37 +1317,17 @@ if __name__ == '__main__':
 
     #bugs = [(4,20),(9,14)] # ComputeDeriv
     #mutator = [offbyone, sametype] # ComputeDeriv
-    #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
-    #mutator = [offbyone, sametype] #h1-4 (hailstone)
+    bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
+    mutator = [offbyone, sametype] #h1-4 (hailstone)
     #bugs = [(6,19)] # EvaluatePoly s2
     #bugs = [(6,23)] # EvaluatePoly s4
     #mutator = [offbyone, sametype] # EvaluatePoly
-    bugs = [(11,24)] # EvaluatePoly s3
-    mutator = [samestruct] # EvaluatePoly s3
+    #bugs = [(11,24)] # EvaluatePoly s3
+    #mutator = [samestruct] # EvaluatePoly s3
     #bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
     #mutator = [offbyone, sametype] # EvaluateOther
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
-    fixes = generateAllFixes(bugs, mutator)
-    queue = Queue()
-    workers = []
-
-    for i in xrange(0, len(fixes)):
-      workers.append(Process(target=run_synthesizer, args=(s_ast, synrkt + "_"
-        + str(i), fixes[i], queue)))
-
-    for i in xrange(0, len(fixes)):
-      workers[i].start()
-
-    while True:
-      if not queue.empty():
-        # terminate all processes
-        for i in xrange(0, len(fixes)):
-          if workers[i].is_alive():
-            workers[i].terminate()
-        # display results
-        fixes = queue.get()
-        for fix in fixes:
-          print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
-          print "\t " + SourceVisitor().visit(fix)
-        break
+    #parallel_synthesis(s_ast, synrkt, bugs, mutator)
+    mixer_synthesis(s_ast, synrkt, bugs, mutator)
+ 

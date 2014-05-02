@@ -11,24 +11,25 @@ class MutateVisitor(ast.NodeVisitor):
     self.mutator_map = mutator_map
     # print self.mutator_map
 
+  def mutate_node(self, node):
+    mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
+    mutated_node.lineno = node.lineno
+    mutated_node.col_offset = node.col_offset
+    return mutated_node
+    
+
   """
   A visitor for num expression
   """
   def visit_Num(self, node):
     if (node.lineno, node.col_offset) in self.mutator_map:
-      mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
-      mutated_node.lineno = node.lineno
-      mutated_node.col_offset = node.col_offset
-      return mutated_node
+      return self.mutate_node(node)
     else:
       return node
 
   def visit_Subscript(self, node):
     if (node.lineno, node.col_offset) in self.mutator_map:
-      mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
-      mutated_node.lineno = node.lineno
-      mutated_node.col_offset = node.col_offset
-      return mutated_node
+      return self.mutate_node(node)
     else:
       for field, value in ast.iter_fields(node):
         if field == "value":
@@ -44,11 +45,7 @@ class MutateVisitor(ast.NodeVisitor):
 
   def visit_AugAssign(self, node):
     if (node.lineno, node.col_offset) in self.mutator_map:
-      mutated_node = self.mutator_map[(node.lineno, node.col_offset)].visit(node)
-      mutated_node.lineno = node.lineno
-      mutated_node.col_offset = node.col_offset
-
-      return mutated_node
+      return self.mutate_node(node)
     else:
       target = None
       op = None
@@ -75,44 +72,86 @@ class MutateVisitor(ast.NodeVisitor):
   A visitor for binop expression
   """
   def visit_BinOp(self, node):
-    left = None
-    op = None
-    right = None
-    for field, value in ast.iter_fields(node):
-      if field == "left":
-        left = value
-      elif field == "op":
-        op = value
-      elif field == "right":
-        right = value
+    if (node.lineno, node.col_offset) in self.mutator_map:
+      return self.mutate_node(node)
+    else:
+      left = None
+      op = None
+      right = None
+      for field, value in ast.iter_fields(node):
+        if field == "left":
+          left = value
+        elif field == "op":
+          op = value
+        elif field == "right":
+          right = value
+          
+      node.left = self.visit(left)
+      node.right = self.visit(right)
+      node.op = op
+      return node
 
-    node.left = self.visit(left)
-    node.right = self.visit(right)
-    node.op = op
+  def visit_BoolOp(self, node):
+    if (node.lineno, node.col_offset) in self.mutator_map:
+      return self.mutate_node(node)
+    else:
+      op = None
+      values = None
+      for field, value in ast.iter_fields(node):
+        if field == "op":
+          op = value
+        elif field == "values":
+          values = value
+          
+      node.op = self.visit(op)
+      node.values = [self.visit(v) for v in values]
+      return node
 
-    return node
+  """
+  A visitor for unaryop expression
+  """
+  def visit_UnaryOp(self, node):
+    if (node.lineno, node.col_offset) in self.mutator_map:
+      return self.mutate_node(node)
+    else:
+      op = None
+      operand = None
+      for field, value in ast.iter_fields(node):
+        if field == "operand":
+          operand = value
+        elif field == "op":
+          op = value
+          
+      # process op
+      node.op = self.visit(op)
+      # process operand
+      node.left = self.visit(left)
 
+      return node
 
   """
   A visitor for compare expression
   """
   def visit_Compare(self, node):
-    left = None
-    ops = None
-    comparators = None
-    for field, value in ast.iter_fields(node):
-      if field == "left":
-        left = value
-      elif field == "ops":
-        ops = value[0]
-      elif field == "comparators":
-        comparators = value[0]
+    if (node.lineno, node.col_offset) in self.mutator_map:
+      return self.mutate_node(node)
+    else:
+      left = None
+      ops = None
+      comparators = None
+      for field, value in ast.iter_fields(node):
+        if field == "left":
+          left = value
+        elif field == "ops":
+          ops = value[0]
+        elif field == "comparators":
+          comparators = value[0]
 
-    node.ops = [self.visit(ops)]
-    node.left = self.visit(left)
-    node.comparators = [self.visit(comparators)]
-
-    return node
+      node.ops = [self.visit(ops)]
+      node.left = self.visit(left)
+      node.comparators = [self.visit(comparators)]
+      
+      return node
 
   """
   A visitor for if expression
@@ -140,31 +179,6 @@ class MutateVisitor(ast.NodeVisitor):
 
     return node
 
-  """
-  A visitor for unaryop expression
-  """
-  def visit_UnaryOp(self, node):
-    if (node.lineno, node.col_offset) in self.mutator_map:
-      mutated_node =  self.mutator_map[(node.lineno, node.col_offset)].visit(node)
-      mutated_node.lineno = node.lineno
-      mutated_node.col_offset = node.col_offset
-
-      return mutated_node
-    else:
-      op = None
-      operand = None
-      for field, value in ast.iter_fields(node):
-        if field == "operand":
-          operand = value
-        elif field == "op":
-          op = value
-          
-      # process op
-      node.op = self.visit(op)
-      # process operand
-      node.left = self.visit(left)
-
-      return node
 
   """
   A visitor for assign expression
@@ -249,6 +263,7 @@ class MutateVisitor(ast.NodeVisitor):
     if (not (isinstance(node, ast.AST))):
       raise JSONVisitorException("Unexpected error: Non-ast passed to visit.  Please report to the TAs.")
 
+    print "GENERIC", node.__class__
     for field, value in ast.iter_fields(node):
       if (isinstance(value, list)):
         for item in value:

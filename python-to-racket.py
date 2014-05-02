@@ -123,6 +123,10 @@ class RacketVisitor(ast.NodeVisitor):
       return ">="
     elif isinstance(op, ast.FloorDiv):
       return "quotient"
+    elif isinstance(op, ast.And):
+      return "and"
+    elif isinstance(op, ast.Or):
+      return "or"
     else:
       raise JSONVisitorException("Unexpected error: Missed case: %s." % op)
 
@@ -472,6 +476,26 @@ class RacketVisitor(ast.NodeVisitor):
 
     self.output(")")
 
+  def visit_BoolOp(self, node):
+    # associate racket line and column to node
+    node.rkt_lineno = self.rkt_lineno
+    node.rkt_col_offset = self.rkt_col_offset
+
+    self.output("(")
+    self.indent_print("BoolOp:")
+    self.indent = self.indent + 1
+    for field, value in ast.iter_fields(node):
+      self.indent_print(field + ":")
+      self.indent = self.indent + 1
+      if field == "op":
+        self.indent_print(value.__class__.__name__)
+        self.output(self.op_to_string(value))
+      elif field == "values":
+        self.visit_list(value)
+    self.indent = self.indent - 1
+    self.outputln(")")
+    
+
   """
   A visitor for assign expression
   """
@@ -692,6 +716,7 @@ class RacketVisitor(ast.NodeVisitor):
       self.indent_print(field + ":")
       self.indent = self.indent + 1
       if field == "test":
+        print value
         self.visit(value)
         self.newline()
       elif field == "body":
@@ -1250,8 +1275,10 @@ if __name__ == '__main__':
     #bugs = [(6,19)] # EvaluatePoly s2
     #bugs = [(6,23)] # EvaluatePoly s4
     #mutator = [offbyone, sametype] # EvaluatePoly
-    bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
-    mutator = [offbyone, sametype] # EvaluateOther
+    bugs = [(11,24)] # EvaluatePoly s3
+    mutator = [samestruct] # EvaluatePoly s3
+    #bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
+    #mutator = [offbyone, sametype] # EvaluateOther
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
     fixes = generateAllFixes(bugs, mutator)

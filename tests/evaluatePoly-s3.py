@@ -12,4 +12,4 @@ def evaluatePoly(poly, x):
         total = total + ((poly[index])*(x**index))
         index += 1
 
-    return float(total)
+    return total

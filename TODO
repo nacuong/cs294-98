@@ -5,14 +5,10 @@ For poster
 
 cuong:
 - # of symbolic variables = # of holes
-- generalize # of fixes
-- multIA += -> *=
 - test preserveMutator
 - add generic mutator
-- everyOther-s2 doesn't print the last fix (subscript)
 
 mangpo:
-- try evalPoly 3
 - return in loop, break
 
 ======================================
@@ -32,7 +28,7 @@ ComputeDeriv
 EvaluatePoly
 1: no return, break
 2: ok
-3: ok with > => !=
+3: ok
 4: ok
 OddTuples
 1: ok with range(l) => range(len(l))

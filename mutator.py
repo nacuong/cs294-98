@@ -51,12 +51,45 @@ class PreserveStructure(ast.NodeVisitor):
       elif field == "right":
         right = value
 
+    # visit left and right once, and reuse them?
     add = ast.BinOp(self.visit(left), ast.Add(), self.visit(right), lineno = 0, col_offset = 0)
     sub = ast.BinOp(self.visit(left), ast.Sub(), self.visit(right), lineno = 0, col_offset = 0)
     mult = ast.BinOp(self.visit(left), ast.Mult(), self.visit(right), lineno = 0, col_offset = 0)
     div = ast.BinOp(self.visit(left), ast.Div(), self.visit(right), lineno = 0, col_offset = 0)
 
     return Either([add,sub,mult,div])
+
+  def visit_Compare(self, node):
+    left = None
+    op = None
+    comparators = None
+    for field, value in ast.iter_fields(node):
+      if field == "left":
+        left = value
+      elif field == "ops":
+        op = value[0]
+      elif field == "comparators":
+        comparators = value[0]
+
+    left = self.visit(left)
+    comparators = [self.visit(comparators)]
+    # cmpop = Eq | NotEq | Lt | LtE | Gt | GtE | Is | IsNot | In | NotIn
+    if isinstance(op, ast.Eq) or isinstance(op, ast.NotEq) or isinstance(op, ast.Lt) or isinstance(op, ast.LtE) or isinstance(op, ast.Gt) or isinstance(op, ast.GtE):
+      eq = ast.Compare(left, [ast.Eq()], comparators)
+      noteq = ast.Compare(left, [ast.NotEq()], comparators)
+      lt = ast.Compare(left, [ast.Lt()], comparators)
+      lte = ast.Compare(left, [ast.LtE()], comparators)
+      gt = ast.Compare(left, [ast.Gt()], comparators)
+      gte = ast.Compare(left, [ast.GtE()], comparators)
+      return Either([eq,noteq,lt,lte,gt,gte])
+    elif isinstance(op, ast.Is) or isinstance(op, ast.IsNot):
+      Is = ast.Compare(left, [ast.Is()], comparators)
+      IsNot = ast.Compare(left, [ast.IsNot()], comparators)
+      return Either([Is,IsNot])
+    elif isinstance(op, ast.In) or isinstance(op, ast.NotIn):
+      In = ast.Compare(left, [ast.In()], comparators)
+      NotInn = ast.Compare(left, [ast.NotIn()], comparators)
+      return Either([In,NotIn])
 
   def visit_Num(self, node):
     return AllNum()

@@ -4,7 +4,8 @@ For poster
 3) compare with rishabh's tool (when his doesn't work)
 
 cuong:
-- range(l) => range(len(l))
+- range(l) => range(len(l)) - DONE, still got issue about the rosette fail
+  because of unrunable code.
 - 2 cores: 1) mixer 2) sequential with priority - DONE
 
 - # of symbolic variables = # of holes

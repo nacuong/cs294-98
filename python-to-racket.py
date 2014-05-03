@@ -1402,10 +1402,10 @@ if __name__ == '__main__':
     #mutator = [offbyone, sametype] # EvaluatePoly
     #bugs = [(11,24)] # EvaluatePoly s3
     #mutator = [samestruct] # EvaluatePoly s3
-    bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
-    mutator = [offbyone, sametype] # EveryOther
-    #bugs = [(3, 13)] #EveryOther s1
-    #mutator =  [rangewithlen] #EveryOther
+    #bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
+    #mutator = [offbyone, sametype] # EveryOther
+    bugs = [(3, 13)] #EveryOther s1
+    mutator =  [rangewithlen] #EveryOther
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
 

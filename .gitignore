@@ -6,6 +6,8 @@
 *~
 *#
 *.rkt_*
+error
+*.csv
 
 # C extensions
 *.so

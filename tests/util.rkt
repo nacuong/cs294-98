@@ -54,7 +54,10 @@
     (vector-set! vec i x)
     (vector->list vec)))
 
-(define-syntax-rule (len l) (length l))
+(define-syntax-rule (len l) 
+  (if (list? l)
+      (length l)
+      (assert #f)))
 
 (define-syntax range
   (syntax-rules ()

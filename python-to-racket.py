@@ -1331,6 +1331,8 @@ if __name__ == '__main__':
   parser.add_option("-l", "--lower-bound", default=-10000)
   parser.add_option("-u", "--upper-bound", default=10000)
   parser.add_option("-a", "--array", default="")
+  parser.add_option("-b", "--bugs", default="")
+  parser.add_option("-c", "--control", default="mixer")
   (options, args) = parser.parse_args()
 
   main_func = options.main
@@ -1379,7 +1381,9 @@ if __name__ == '__main__':
   #
   # Generate mutated python program to racket
   #
+  print "HERE"
   if options.student_py and options.teacher_py:
+    print "RUN"
     s_py = options.student_py
     synrkt = s_py.strip(".py") + "_synr.rkt"
     offbyone = OffByOne()
@@ -1395,25 +1399,49 @@ if __name__ == '__main__':
 
     #bugs = [(4,20),(9,14)] # ComputeDeriv
     #mutator = [offbyone, sametype] # ComputeDeriv
-    #bugs = [(3,15), (5,15)] # hw1-4 (hailstone)
+
+    #bugs = [(3,15)] # hw1-4 (hailstone)
     #mutator = [offbyone, sametype] #h1-4 (hailstone)
+
     #bugs = [(6,19)] # EvaluatePoly s2
     #bugs = [(6,23)] # EvaluatePoly s4
     #mutator = [offbyone, sametype] # EvaluatePoly
+
     #bugs = [(11,24)] # EvaluatePoly s3
     #mutator = [samestruct] # EvaluatePoly s3
+
     #bugs = [(4,21),(5,14),(6,20)] # EveryOther s2
     #mutator = [offbyone, sametype] # EveryOther
-    bugs = [(3, 13)] #EveryOther s1
-    mutator =  [rangewithlen] #EveryOther
+
+    #bugs = [(3, 13)] #EveryOther s1
+    #mutator =  [rangewithlen] #EveryOther
+
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
 
-    #parallel_synthesis(s_ast, synrkt, bugs, mutator)
+    mutator = [offbyone, sametype, samestruct]
+    bugs = options.bugs.split("),(")
+    if len(bugs) > 0:
+      bugs[0] = bugs[0].strip("(")
+      bugs[-1] = bugs[-1].strip(")")
 
-    #priority_synthesis(s_ast, synrkt, bugs, mutator, score, False, None)
+    print bugs
 
-    #mixer_synthesis(s_ast, synrkt, bugs, mutator, False, None)
+    for i in xrange(len(bugs)):
+      loc = bugs[i].split(",")
+      bugs[i] = (int(loc[0]),int(loc[1]))
 
-    mixer_and_priority_synthesis(s_ast, synrkt, bugs, mutator, score)
+    start = time.time()
+    if options.control == "parallel":
+      parallel_synthesis(s_ast, synrkt, bugs, mutator)
+    elif options.control == "priority":
+      priority_synthesis(s_ast, synrkt, bugs, mutator, score, False, None)
+    elif options.control == "mixer":
+      mixer_synthesis(s_ast, synrkt, bugs, mutator, False, None)
+    elif options.control == "mixer-priority":
+      mixer_and_priority_synthesis(s_ast, synrkt, bugs, mutator, score)
+    end = time.time()
+    f = open("time.csv", "a")
+    f.write(s_py + "," + options.control + "," + str(len(bugs)) + "," + str(end-start) + "\n")
+    f.close()
  

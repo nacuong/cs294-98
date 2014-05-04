@@ -127,7 +127,7 @@ class PreserveStructure(Mutator):
 
   def visit_Compare(self, node):
     left = node.left
-    op = node.op[0]
+    op = node.ops[0]
     comparators = node.comparators[0]
 
     left = self.visit(left)

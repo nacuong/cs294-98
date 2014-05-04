@@ -202,6 +202,6 @@ class SourceVisitor(ast.NodeVisitor):
       elif isinstance(value, ast.AST):
         self.visit(value)
       else:
-        print value
+        print "value =", value
         raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % value)
 

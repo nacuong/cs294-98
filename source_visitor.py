@@ -130,8 +130,12 @@ class SourceVisitor(ast.NodeVisitor):
           args.append(arg)
 
     string += self.visit(func) + "("
+    cnt = 0
     for arg in args:
-      string += self.visit(arg) + ","
+      cnt += 1
+      string += self.visit(arg) 
+      if cnt < len(args)-1:
+        string += ","
     string += ")"
 
     return string

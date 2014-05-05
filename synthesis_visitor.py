@@ -170,6 +170,9 @@ class SynthesisVisitor(ast.NodeVisitor):
       elif field == "args":
         node.args = [self.visit(arg) for arg in value]
 
+    if (node.lineno, node.col_offset) in self.locs:
+      self.fixes.append(node)
+
     return node
 
 
@@ -251,6 +254,9 @@ class SynthesisVisitor(ast.NodeVisitor):
         node.test = self.visit(value)
       if field == "body":
         node.body = [self.visit(stmt) for stmt in value]
+
+    if (node.lineno, node.col_offset) in self.locs:
+      self.fixes.append(node)
 
     return node
 

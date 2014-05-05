@@ -136,8 +136,9 @@ class RacketVisitor(ast.NodeVisitor):
   track line and column number.
   """
   def visit_AllNumVar(self, node):
-    self.output(" (?? _vn" + str(self._vnid) + " _vv" + str(self._vnid) + " _nn" + str(self._vnid) + " ) ")
-    self._vnid += 1
+    #self.output(" (?? _vn" + str(self._vnid) + " _vv" + str(self._vnid) + " _nn" + str(self._vnid) + " ) ")
+    #self._vnid += 1
+    self.output(" (?? _vn" + str(node.id) + " _vv" + str(node.id) + " _nn" + str(node.id) + " ) ")
 
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
@@ -152,8 +153,9 @@ class RacketVisitor(ast.NodeVisitor):
   track line and column number.
   """
   def visit_AllVar(self, node):
-    self.output(" (v? _v" + str(self._vid) + ") ")
-    self._vid += 1
+    #self.output(" (v? _v" + str(self._vid) + ") ")
+    #self._vid += 1
+    self.output(" (v? _v" + str(node.id) + ") ")
 
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
@@ -168,8 +170,9 @@ class RacketVisitor(ast.NodeVisitor):
   track line and column number.
   """
   def visit_AllNum(self, node):
-    self.output(" (n? _n" + str(self._nid) + ") ")
-    self._nid += 1
+    #self.output(" (n? _n" + str(self._nid) + ") ")
+    #self._nid += 1
+    self.output(" (n? _n" + str(node.id) + ") ")
 
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
@@ -185,8 +188,9 @@ class RacketVisitor(ast.NodeVisitor):
 
   """
   def visit_Either(self, node):
-    self.output(" (either _c" + str(self._cid) + " ")
-    self._cid += 1
+    #self.output(" (either _c" + str(self._cid) + " ")
+    #self._cid += 1
+    self.output(" (either _c" + str(node.id) + " ")
     self.indent_print(self.__class__.__name__ + ":")
     self.indent = self.indent + 1
     cache_vid = self._vid

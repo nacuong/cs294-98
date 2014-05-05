@@ -7,28 +7,54 @@ class Mixer(ast.NodeVisitor):
   def __init__(self, mutators):
     self.mutators = mutators
 
-  def generic_visit(self, node):
+  def visit_AugAssign(self, node):
     nodes = []
-    either = Either(nodes)
     for mutator in self.mutators:
       mutated_node = mutator.visit(node)
       if mutated_node not in nodes:
-        nodes.append(mutated_node)
+        if isinstance(mutated_node.value,Either):
+          nodes += mutated_node.value.choices
+        else:
+          nodes.append(mutated_node.value)
+    
+    either = None
+    if len(nodes) == 1:
+      either = nodes[0]
+    else:
+      either = Either(nodes)
+
+    return ast.Assign([node.target],either,lineno = 0, col_offset = 0)
+
+  def generic_visit(self, node):
+    nodes = []
+    either = None
+    for mutator in self.mutators:
+      mutated_node = mutator.visit(node)
+      if mutated_node not in nodes:
+        if isinstance(mutated_node,Either):
+          nodes += mutated_node.choices
+        else:
+          nodes.append(mutated_node)
 
     if len(nodes) > 1:
-      either.update(nodes)
-      return either
+      return Either(nodes)
     else:
-      Either.count -= 1
       return nodes[0]
 
-class Generic01(ast.NodeVisitor):
+
+#############  Generic mutators. ############
+class Generic(ast.NodeVisitor):
+  def visit_AugAssign(self, node):
+    target = node.target
+    return ast.Assign([target],ast.BinOp(target, node.op, node.value),lineno = 0, col_offset = 0)
+
+class Generic01(Generic):
   name = "Generic01"
 
   def generic_visit(self, node):
     return Either([AllNum(), AllVar()])
 
-class Generic02(ast.NodeVisitor):
+class Generic02(Generic):
   name = "Generic02"
 
   def generic_visit(self, node):
@@ -39,10 +65,13 @@ class Generic02(ast.NodeVisitor):
 
     return Either([add,sub,mult,div])
 
+
 #############  Super class for all mutators. ############
 class Mutator(ast.NodeVisitor):
+
   def visit_AugAssign(self, node):
-    return ast.AugAssign(self.visit(node.target), node.op, node.value , lineno=node.lineno, col_offset=node.col_offset)
+    target = node.target
+    return ast.Assign([target],ast.BinOp(target, node.op, node.value),lineno = 0, col_offset = 0)
 
   def visit_BinOp(self, node):
     return ast.BinOp(self.visit(node.left), node.op, node.right, lineno=node.lineno, col_offset=node.col_offset)
@@ -90,38 +119,37 @@ class PreserveStructure(Mutator):
 
   def visit_UnaryOp(self, node):
     op = node.op
-    operand = node.operand
+    operand = self.visit(node.operand)
 
-    invert = ast.UnaryOp(ast.Invert, self.visit(operand), lineno = 0, col_offset = 0)
-    nott = ast.UnaryOp(ast.Not, self.visit(operand), lineno = 0, col_offset = 0)
-    uadd = ast.UnaryOp(ast.UAdd, self.visit(operand), lineno = 0, col_offset = 0)
-    usub = ast.UnaryOp(ast.USub, self.visit(operand), lineno = 0, col_offset = 0)
+    invert = ast.UnaryOp(ast.Invert, operand, lineno = 0, col_offset = 0)
+    nott = ast.UnaryOp(ast.Not, operand, lineno = 0, col_offset = 0)
+    uadd = ast.UnaryOp(ast.UAdd, operand, lineno = 0, col_offset = 0)
+    usub = ast.UnaryOp(ast.USub, operand, lineno = 0, col_offset = 0)
 
     return Either([invert,nott,uadd,usub])
 
   def visit_AugAssign(self, node):
     target = node.target
     op = node.op
-    val = node.value
+    val = self.visit(node.value)
 
-    add = ast.BinOp(target, ast.Add(), self.visit(val), lineno=0, col_offset=0)
-    sub = ast.BinOp(target, ast.Sub(), self.visit(val), lineno = 0, col_offset = 0)
-    mult = ast.BinOp(target, ast.Mult(), self.visit(val), lineno = 0, col_offset = 0)
-    div = ast.BinOp(target, ast.Div(), self.visit(val), lineno = 0, col_offset = 0)
+    add = ast.BinOp(target, ast.Add(), val, lineno=0, col_offset=0)
+    sub = ast.BinOp(target, ast.Sub(), val, lineno = 0, col_offset = 0)
+    mult = ast.BinOp(target, ast.Mult(), val, lineno = 0, col_offset = 0)
+    div = ast.BinOp(target, ast.Div(), val, lineno = 0, col_offset = 0)
     either = Either([add,sub,mult,div])
 
-    return ast.Assign(target, either, lineno=node.lineno,
+    return ast.Assign([target], either, lineno=node.lineno,
         col_offset=node.col_offset)
 
   def visit_BinOp(self, node):
-    left = node.left
-    op = node.op
-    right = node.right
+    left = self.visit(node.left)
+    right = self.visit(node.right)
 
-    add = ast.BinOp(self.visit(left), ast.Add(), self.visit(right), lineno = 0, col_offset = 0)
-    sub = ast.BinOp(self.visit(left), ast.Sub(), self.visit(right), lineno = 0, col_offset = 0)
-    mult = ast.BinOp(self.visit(left), ast.Mult(), self.visit(right), lineno = 0, col_offset = 0)
-    div = ast.BinOp(self.visit(left), ast.Div(), self.visit(right), lineno = 0, col_offset = 0)
+    add = ast.BinOp(left, ast.Add(), right, lineno = 0, col_offset = 0)
+    sub = ast.BinOp(left, ast.Sub(), right, lineno = 0, col_offset = 0)
+    mult = ast.BinOp(left, ast.Mult(), right, lineno = 0, col_offset = 0)
+    div = ast.BinOp(left, ast.Div(), right, lineno = 0, col_offset = 0)
 
     return Either([add,sub,mult,div])
 
@@ -172,7 +200,7 @@ class PreserveStructureAndOp(Mutator):
     return ast.UnaryOp(node.op, self.visit(node.operand), lineno=0, col_offset=0)
 
   def visit_AugAssign(self, node):
-    return ast.Assign(node.target, node.op, self.visit(node.value), lineno=0, col_offset=0)
+    return ast.Assign([node.target], node.op, self.visit(node.value), lineno=0, col_offset=0)
 
   def visit_BinOp(self, node):
     return ast.BinOp(self.visit(node.left), node.op, self.visit(node.right), lineno = 0,

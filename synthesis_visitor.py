@@ -206,7 +206,6 @@ class SynthesisVisitor(ast.NodeVisitor):
       else:
         raise JSONVisitorException("Unexpected error: Missed case: %s." % value)
 
-    #print lhs, isinstance(lhs, ast.Name)
     if isinstance(lhs, ast.Name):
       node.targets = [self.visit(lhs)]
       node.value = self.visit(rhs)

@@ -193,6 +193,7 @@ class SourceVisitor(ast.NodeVisitor):
       raise JSONVisitorException("Unexpected error: Non-ast passed to visit.  Please report to the TAs.")
 
     for field, value in ast.iter_fields(node):
+      print field, value
       if (isinstance(value, list)):
         for item in value:
           if isinstance(item, ast.AST):
@@ -202,6 +203,7 @@ class SourceVisitor(ast.NodeVisitor):
       elif isinstance(value, ast.AST):
         self.visit(value)
       else:
+        print "node = ", node
         print "value =", value
         raise JSONVisitorException("Unexpected error: Missed case: %s.  Please report to the TAs." % value)
 

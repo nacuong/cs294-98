@@ -1053,6 +1053,7 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("(require rosette/solver/z3/z3)\n")
   f.write("(require \"util.rkt\")\n")
   f.write("(require \"../" + t_rkt + "\")\n\n")
+  f.write("(define t1 (current-seconds))\n")
   #f.write("(current-solver (new z3%))\n")
   f.write("(define-symbolic ")
   f.write(syms)
@@ -1097,6 +1098,8 @@ def generate_synthesizer(my_ast, synrkt, mutation):
   f.write("\t(define symtype (syntax->datum sym))\n")
   f.write("\t(printf \"~a:~a\\n\" symtype val))\n")
   f.write("\t solution)\n")
+  f.write("(define t2 (current-seconds))\n")
+  #f.write("(with-output-to-file #:exists \'append \"time.csv\" (lambda () (display (- t2 t1)) (display \",\")))\n")
   f.close()
 
   return clone_ast
@@ -1423,7 +1426,7 @@ if __name__ == '__main__':
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
 
-    #mutator = [offbyone, sametype, samestruct, rangewithlen]
+    #mutator = [offbyone, sametype, samestruct]
     mutator = [rangewithlen]
     bugs = options.bugs.split("),(")
     if len(bugs) > 0:

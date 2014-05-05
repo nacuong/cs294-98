@@ -1423,7 +1423,8 @@ if __name__ == '__main__':
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
 
-    mutator = [offbyone, sametype, samestruct]
+    #mutator = [offbyone, sametype, samestruct, rangewithlen]
+    mutator = [rangewithlen]
     bugs = options.bugs.split("),(")
     if len(bugs) > 0:
       bugs[0] = bugs[0].strip("(")

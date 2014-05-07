@@ -42,3 +42,12 @@ OddTuples
 MultIA
 1: ok
 2: base case, add statement
+
+======================================
+multIA
+3 mutators mixer (slow)
+(set! result (either _c3  (* result m) (* result m) (+ result (v? _v0) ) (- result (v? _v0) ) (* result (v? _v0) ) (quotient result (v? _v0) ))
+
+4 mutators mixer (fast)
+(set! result (either _c3  (* result m) (* result m) (+ result (v? _v0) ) (- result (v? _v0) ) (* result (v? _v0) ) (quotient result (v? _v0) ) (* result m))
+

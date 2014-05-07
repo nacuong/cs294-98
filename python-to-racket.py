@@ -1340,6 +1340,7 @@ if __name__ == '__main__':
   parser.add_option("-a", "--array", default="")
   parser.add_option("-b", "--bugs", default="")
   parser.add_option("-c", "--control", default="mixer")
+  parser.add_option("-n", "--num-mutators", default=4)
   (options, args) = parser.parse_args()
 
   main_func = options.main
@@ -1399,7 +1400,7 @@ if __name__ == '__main__':
     rangewithlen = RangeWithLen()
     generic01 = Generic01()
     generic02 = Generic02()
-    score = {offbyone.__class__.name:1, sametype.__class__.name:2, samestruct.__class__.name:3, generic01.__class__.name:4, generic02.__class__.name:5}
+    score = {offbyone.__class__.name:1, sametype.__class__.name:2, samestruct.__class__.name:3, generic01.__class__.name:4, generic02.__class__.name:5, rangewithlen.__class__.name:4}
 
     #bugs = [(5,15),(7,38)] # hw2-1 (product)
     #mutator = [offbyone, sametype]
@@ -1426,23 +1427,29 @@ if __name__ == '__main__':
     #bugs = [(3,13), (5, 8)] # mulIA 
     #mutator = [sametype, samestruct]
 
-    #mutator = [offbyone, sametype, samestruct]
-    mutator = [rangewithlen]
+    mutator = []
+    if int(options.num_mutators) == 3:
+      mutator = [offbyone, sametype, samestruct]
+    elif int(options.num_mutators) == 4:
+      mutator = [offbyone, sametype, samestruct, rangewithlen]
+
     bugs = options.bugs.split("),(")
     if len(bugs) > 0:
       bugs[0] = bugs[0].strip("(")
       bugs[-1] = bugs[-1].strip(")")
 
-    print bugs
-
     for i in xrange(len(bugs)):
       loc = bugs[i].split(",")
       bugs[i] = (int(loc[0]),int(loc[1]))
 
+    n = len(bugs)**len(mutator)
+
+    print "HERE"
     start = time.time()
     if options.control == "parallel":
       parallel_synthesis(s_ast, synrkt, bugs, mutator)
     elif options.control == "priority":
+      print "PIORITY"
       priority_synthesis(s_ast, synrkt, bugs, mutator, score, False, None)
     elif options.control == "mixer":
       mixer_synthesis(s_ast, synrkt, bugs, mutator, False, None)
@@ -1450,6 +1457,6 @@ if __name__ == '__main__':
       mixer_and_priority_synthesis(s_ast, synrkt, bugs, mutator, score)
     end = time.time()
     f = open("time.csv", "a")
-    f.write(s_py + "," + options.control + "," + str(len(bugs)) + "," + str(end-start) + "\n")
+    f.write(s_py + "," + options.control + "," + str(n) + "," + str(end-start) + "\n")
     f.close()
  

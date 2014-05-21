@@ -51,3 +51,14 @@ multIA
 4 mutators mixer (fast)
 (set! result (either _c3  (* result m) (* result m) (+ result (v? _v0) ) (- result (v? _v0) ) (* result (v? _v0) ) (quotient result (v? _v0) ) (* result m))
 
+======================================
+- result of bug localization
+  = min unsat vs maxsat
+  = # clause of correction set
+  = runtime?
+  = discussion of other techniques
+- evaluation
+  = # of search space not just # of candidate fixes
+  = # of symbolic inputs
+  = reorder priority order -> see the effect
+

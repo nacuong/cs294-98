@@ -1231,9 +1231,13 @@ def parallel_synthesis(s_ast, synrkt, bugs, mutators):
           workers[i].terminate()
       # display results
       fixes = queue.get()
+      visit = []
       for fix in fixes:
-        print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
-        print "\t " + SourceVisitor().visit(fix)
+        print fix, visit
+        if not fix in visit:
+          visit.append(fix)
+          print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
+          print "\t " + SourceVisitor().visit(fix)
       break
     time.sleep(1)
 
@@ -1259,10 +1263,13 @@ def priority_synthesis(s_ast, synrkt, bugs, mutators, score, parallel, queue):
         queue.put((results, "priority"))
       else:
         sol_found = True
+        visit = []
         print "Solution found after " + str(cnt) + "/" + str(len(fixes)) + " trials:"
         for result in results:
-          print "At line " + str(result.lineno) + " and offset " + str(result.col_offset) 
-          print "\t " + SourceVisitor().visit(result)
+          if not result in visit:
+            visit.append(result)
+            print "At line " + str(result.lineno) + " and offset " + str(result.col_offset) 
+            print "\t " + SourceVisitor().visit(result)
       break
 
     cnt += 1
@@ -1272,6 +1279,9 @@ def priority_synthesis(s_ast, synrkt, bugs, mutators, score, parallel, queue):
       queue.put(([], "priority"))
     else:
       print "No solution found!"
+    return None
+  else:
+    return cnt
 
 def mixer_synthesis(s_ast, synrkt, bugs, mutators, parallel, queue):
   mixer = Mixer(mutators)
@@ -1285,9 +1295,12 @@ def mixer_synthesis(s_ast, synrkt, bugs, mutators, parallel, queue):
     if parallel:
       queue.put((fixes, "mixer"))
     else:
+      visit = []
       for fix in fixes:
-        print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
-        print "\t " + SourceVisitor().visit(fix)
+        if not fix in visit:
+          visit.append(fix)
+          print "At line " + str(fix.lineno) + " and offset " + str(fix.col_offset) 
+          print "\t " + SourceVisitor().visit(fix)
   elif parallel:
     queue.put(([], "mixer"))
   else:
@@ -1401,6 +1414,7 @@ if __name__ == '__main__':
     generic01 = Generic01()
     generic02 = Generic02()
     score = {offbyone.__class__.name:1, sametype.__class__.name:2, samestruct.__class__.name:3, generic01.__class__.name:4, generic02.__class__.name:5, rangewithlen.__class__.name:4}
+    #score = {offbyone.__class__.name:4, sametype.__class__.name:3, samestruct.__class__.name:2, rangewithlen.__class__.name:1}
 
     #bugs = [(5,15),(7,38)] # hw2-1 (product)
     #mutator = [offbyone, sametype]
@@ -1444,13 +1458,14 @@ if __name__ == '__main__':
 
     n = len(bugs)**len(mutator)
 
-    print "HERE"
     start = time.time()
     if options.control == "parallel":
       parallel_synthesis(s_ast, synrkt, bugs, mutator)
     elif options.control == "priority":
-      print "PIORITY"
-      priority_synthesis(s_ast, synrkt, bugs, mutator, score, False, None)
+      cnt = priority_synthesis(s_ast, synrkt, bugs, mutator, score, False, None)
+      f = open("time.csv", "a")
+      f.write(str(cnt) + "\n")
+      f.close()
     elif options.control == "mixer":
       mixer_synthesis(s_ast, synrkt, bugs, mutator, False, None)
     elif options.control == "mixer-priority":

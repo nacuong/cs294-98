@@ -3,7 +3,9 @@
 #python python-to-racket.py -t tests/hw2-1-t.py -s tests/hw2-1-s.py -m product -u 10 -b "(5,15),(7,38)" -c parallel
 
 strategies=( #parallel 
-mixer priority mixer-priority
+#mixer 
+priority 
+#mixer-priority
 )
 programs=(
 "-t tests/evaluatePoly-t4.py -s tests/evaluatePoly-s2.py -m evaluatePoly -u 5 -l -5 -a 0 -b (6,19)"
@@ -19,21 +21,21 @@ programs=(
 
 for program in "${programs[@]}"
 do
-    # for strategy in "${strategies[@]}"
-    # do
-    #     echo python python-to-racket.py $program -c $strategy -n $1
-    #     python python-to-racket.py $program -c $strategy -n $1 2> error
-    #     sleep 10
-    #     python python-to-racket.py $program -c $strategy -n $1 2> error
-    #     sleep 10
-    #     python python-to-racket.py $program -c $strategy -n $1 2> error
-    #     sleep 10
-    # done
-    echo python python-to-racket.py $program -c parallel -n $1
-    python python-to-racket.py $program -c parallel -n $1 2> error
-    sleep 60
-    python python-to-racket.py $program -c parallel -n $1 2> error
-    sleep 60
-    python python-to-racket.py $program -c parallel -n $1 2> error
-    sleep 60
+    for strategy in "${strategies[@]}"
+    do
+        echo python python-to-racket.py $program -c $strategy -n $1
+        python python-to-racket.py $program -c $strategy -n $1 2> error
+        # #sleep 10
+        # python python-to-racket.py $program -c $strategy -n $1 2> error
+        # #sleep 10
+        # python python-to-racket.py $program -c $strategy -n $1 2> error
+        # #sleep 10
+    done
+    # echo python python-to-racket.py $program -c parallel -n $1
+    # python python-to-racket.py $program -c parallel -n $1 2> error
+    # sleep 60
+    # python python-to-racket.py $program -c parallel -n $1 2> error
+    # sleep 60
+    # python python-to-racket.py $program -c parallel -n $1 2> error
+    # sleep 60
 done
